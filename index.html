@@ -2,210 +2,113 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Crypto Miner Telegram</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gladiator Tycoon</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --neon: #00ff88; --bg: #0d1117; --card: #161b22; --gold: #f1c40f; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Courier New', monospace; background: var(--bg); color: white; margin: 0; overflow: hidden; }
-
-        /* Pantallas */
-        .screen { display: none; height: 100vh; width: 100vw; padding: 20px; flex-direction: column; align-items: center; overflow-y: auto; }
-        .active { display: flex !important; }
-
-        /* Header / Balances */
-        .header { background: #1a1c23; width: 100%; padding: 15px; border-bottom: 2px solid var(--neon); display: flex; justify-content: space-around; font-size: 14px; position: fixed; top: 0; z-index: 100; }
-        .btc-txt { color: var(--neon); font-weight: bold; }
-        .cash-txt { color: var(--gold); font-weight: bold; }
-
-        /* Centro de Minería */
-        .mine-area { margin-top: 80px; text-align: center; width: 100%; }
-        .gpu-visual { font-size: 80px; margin: 20px 0; filter: drop-shadow(0 0 10px var(--neon)); transition: 0.1s; cursor: pointer; }
-        .gpu-visual:active { transform: scale(0.9); }
-        
-        .hash-rate { background: #21262d; padding: 10px 20px; border-radius: 20px; border: 1px solid var(--neon); font-size: 18px; color: var(--neon); box-shadow: 0 0 15px rgba(0,255,136,0.2); }
-
-        /* Upgrades */
-        .upgrade-list { width: 100%; margin-top: 20px; padding-bottom: 100px; }
-        .item { background: var(--card); border: 1px solid #30363d; border-radius: 12px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .item-info h3 { margin: 0; font-size: 14px; color: var(--neon); }
-        .item-info p { margin: 5px 0 0; font-size: 11px; color: #8b949e; }
-        
-        .btn-up { background: var(--neon); color: black; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; }
-        .btn-up:disabled { background: #30363d; color: #8b949e; }
-
-        /* Navegación Inferior */
-        .nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #161b22; display: flex; padding: 15px; gap: 10px; border-top: 1px solid #30363d; }
-        .btn-nav { flex: 1; background: #21262d; color: white; border: 1px solid #30363d; padding: 12px; border-radius: 10px; font-size: 12px; font-weight: bold; }
-        .nav-active { border-color: var(--neon); color: var(--neon); }
-
-        /* Animación de Bits */
-        .bit { position: absolute; color: var(--neon); font-size: 12px; pointer-events: none; animation: flyUp 1s linear forwards; }
-        @keyframes flyUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
+        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; margin: 0; padding: 20px; }
+        .stat-card { background: #333; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .gladiator-list { display: flex; flex-direction: column; gap: 10px; }
+        .gladiator-item { background: #444; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        button { background: #e67e22; border: none; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:disabled { background: #7f8c8d; }
+        .claim-btn { background: #27ae60; width: 100%; padding: 20px; font-size: 1.2em; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <span class="btc-txt">₿ <span id="btc-val">0.000000</span></span>
-        <span class="cash-txt">$ <span id="cash-val">0</span></span>
+    <div class="stat-card">
+        <h2>Mi Ludus</h2>
+        <p>Oro: <span id="gold">0</span> 💰</p>
+        <p>Gloria Acumulada: <span id="glory">0</span> ⚔️</p>
+        <p>Producción: <span id="pps">0</span> gloria/seg</p>
+        <button class="claim-btn" onclick="claimGlory()">RECLAMAR GLORIA</button>
     </div>
 
-    <!-- PANTALLA DE MINERÍA -->
-    <div id="sc-mine" class="screen active">
-        <div class="mine-area">
-            <p style="color: #8b949e;">HASHRATE ACTUAL</p>
-            <div class="hash-rate"><span id="hash-val">0</span> H/s</div>
-            <div class="gpu-visual" id="gpu-click" onclick="manualClick(event)">📟</div>
-            <p>Toca para acelerar minería</p>
-        </div>
-
-        <div class="upgrade-list">
-            <div class="item">
-                <div class="item-info">
-                    <h3>Tarjeta Gráfica (GPU)</h3>
-                    <p id="gpu-desc">Nivel 1: +1 H/s</p>
-                </div>
-                <button class="btn-up" id="btn-up-gpu" onclick="upgrade('gpu')">MEJORAR</button>
-            </div>
-            <div class="item">
-                <div class="item-info">
-                    <h3>Refrigeración</h3>
-                    <p id="cool-desc">Nivel 1: +5 H/s</p>
-                </div>
-                <button class="btn-up" id="btn-up-cool" onclick="upgrade('cool')">MEJORAR</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- PANTALLA DE EXCHANGE (VENDER BTC) -->
-    <div id="sc-exchange" class="screen">
-        <h2 style="margin-top: 100px; color: var(--gold);">EXCHANGE</h2>
-        <div class="item" style="flex-direction: column; text-align: center; gap: 15px; width: 100%;">
-            <p>Precio Actual: $50,000 por 1 ₿</p>
-            <button class="btn-up" style="width: 100%; padding: 20px;" onclick="sellBTC()">VENDER TODO EL BTC POR CASH</button>
-        </div>
-    </div>
-
-    <div class="nav">
-        <button class="btn-nav nav-active" id="nav-mine" onclick="showScreen('sc-mine')">MINADO</button>
-        <button class="btn-nav" id="nav-exchange" onclick="showScreen('sc-exchange')">EXCHANGE</button>
+    <h3>Mercado de Gladiadores</h3>
+    <div class="gladiator-list" id="gladiator-market">
+        <!-- Los gladiadores se generan aquí con JS -->
     </div>
 
     <script>
-        const tele = window.Telegram.WebApp;
-        tele.expand();
+        const tg = window.Telegram.WebApp;
+        tg.expand();
 
-        // CREDENCIALES INTEGRADAS
-        const SUPABASE_URL = 'https://mfortldgznwotnekaswh.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mb3J0bGRnem53b3RuZWthc3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxODc2NzIsImV4cCI6MjA5MDc2MzY3Mn0.EkKBnYUkiDZ3vCr8vqMScowuvYKvhuo3m9qfPsQzab4';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        let p = {
-            id: "", cash: 0, btc: 0, hashrate: 1, gpu_lvl: 1, cool_lvl: 0
+        // Estado inicial del juego
+        let gameState = {
+            gold: 100,
+            accumulatedGlory: 0,
+            gladiatorsOwned: [0, 0, 0], // Cantidad de cada tipo
+            lastUpdate: Date.now()
         };
 
-        // INICIO
-        window.onload = async () => {
-            const user = tele.initDataUnsafe.user || { id: "dev_test", first_name: "Miner" };
-            p.id = user.id.toString();
-
-            let { data } = await supabase.from('players').select('*').eq('id', p.id).maybeSingle();
-
-            if (data) {
-                p = data;
-            } else {
-                await supabase.from('players').insert([p]);
-            }
-
-            updateUI();
-            startMiningLoop();
-            setInterval(saveDB, 5000); // Guardar cada 5 segundos
-        };
-
-        // CICLO DE MINERÍA (IDLE)
-        function startMiningLoop() {
-            setInterval(() => {
-                // Generar BTC basado en hashrate (fórmula simple)
-                let generated = (p.hashrate / 1000000);
-                p.btc += generated;
-                updateUI();
-            }, 1000);
-        }
-
-        function manualClick(e) {
-            p.btc += (p.hashrate / 100000);
-            createBitEffect(e.clientX, e.clientY);
-            updateUI();
-            if (window.Telegram.WebApp.HapticFeedback) {
-                tele.HapticFeedback.impactOccurred('light');
-            }
-        }
-
-        function upgrade(type) {
-            if (type === 'gpu') {
-                let cost = p.gpu_lvl * 150;
-                if (p.cash >= cost) {
-                    p.cash -= cost;
-                    p.gpu_lvl++;
-                    p.hashrate += 2;
-                }
-            } else if (type === 'cool') {
-                let cost = (p.cool_lvl + 1) * 500;
-                if (p.cash >= cost) {
-                    p.cash -= cost;
-                    p.cool_lvl++;
-                    p.hashrate += 10;
-                }
-            }
-            updateUI();
-            saveDB();
-        }
-
-        function sellBTC() {
-            if (p.btc > 0) {
-                let earnings = Math.floor(p.btc * 50000);
-                p.cash += earnings;
-                p.btc = 0;
-                updateUI();
-                saveDB();
-                alert(`Has vendido tu BTC por $${earnings}`);
-            }
-        }
+        const gladiatorTypes = [
+            { id: 0, name: "Esclavo", cost: 50, production: 1 },
+            { id: 1, name: "Reciario", cost: 500, production: 12 },
+            { id: 2, name: "Murmillo", cost: 2500, production: 70 }
+        ];
 
         function updateUI() {
-            document.getElementById('btc-val').innerText = p.btc.toFixed(6);
-            document.getElementById('cash-val').innerText = p.cash;
-            document.getElementById('hash-val').innerText = p.hashrate;
+            document.getElementById('gold').innerText = Math.floor(gameState.gold);
+            document.getElementById('glory').innerText = Math.floor(gameState.accumulatedGlory);
             
-            document.getElementById('gpu-desc').innerText = `Nivel ${p.gpu_lvl}: +${p.gpu_lvl * 2} H/s (Costo: $${p.gpu_lvl * 150})`;
-            document.getElementById('cool-desc').innerText = `Nivel ${p.cool_lvl}: +${p.cool_lvl * 10} H/s (Costo: ${(p.cool_lvl + 1) * 500})`;
+            let totalPPS = 0;
+            gladiatorTypes.forEach(g => {
+                totalPPS += gameState.gladiatorsOwned[g.id] * g.production;
+            });
+            document.getElementById('pps').innerText = totalPPS;
+
+            renderMarket();
         }
 
-        function showScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.btn-nav').forEach(b => b.classList.remove('nav-active'));
-            document.getElementById(id).classList.add('active');
+        function renderMarket() {
+            const container = document.getElementById('gladiator-market');
+            container.innerHTML = '';
+            gladiatorTypes.forEach(g => {
+                const item = document.createElement('div');
+                item.className = 'gladiator-item';
+                item.innerHTML = `
+                    <div>
+                        <strong>${g.name}</strong> (Posees: ${gameState.gladiatorsOwned[g.id]})<br>
+                        Coste: ${g.cost} 💰 | +${g.production} gloria/s
+                    </div>
+                    <button onclick="buyGladiator(${g.id})" ${gameState.gold < g.cost ? 'disabled' : ''}>COMPRAR</button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function buyGladiator(id) {
+            if (gameState.gold >= gladiatorTypes[id].cost) {
+                gameState.gold -= gladiatorTypes[id].cost;
+                gameState.gladiatorsOwned[id]++;
+                updateUI();
+            }
+        }
+
+        function claimGlory() {
+            // En Grow Tea, la gloria se convierte en oro al reclamar
+            gameState.gold += gameState.accumulatedGlory;
+            gameState.accumulatedGlory = 0;
+            updateUI();
+            tg.HapticFeedback.notificationOccurred('success');
+        }
+
+        // Bucle principal (se ejecuta cada segundo)
+        setInterval(() => {
+            let totalPPS = 0;
+            gladiatorTypes.forEach(g => {
+                totalPPS += gameState.gladiatorsOwned[g.id] * g.production;
+            });
             
-            if(id === 'sc-mine') document.getElementById('nav-mine').classList.add('nav-active');
-            if(id === 'sc-exchange') document.getElementById('nav-exchange').classList.add('nav-active');
-        }
+            if (totalPPS > 0) {
+                gameState.accumulatedGlory += totalPPS;
+                updateUI();
+            }
+        }, 1000);
 
-        function createBitEffect(x, y) {
-            const bit = document.createElement('div');
-            bit.className = 'bit';
-            bit.innerText = '1';
-            bit.style.left = x + 'px';
-            bit.style.top = y + 'px';
-            document.body.appendChild(bit);
-            setTimeout(() => bit.remove(), 1000);
-        }
-
-        async function saveDB() {
-            await supabase.from('players').upsert([p]);
-        }
+        // Inicializar
+        updateUI();
     </script>
 </body>
 </html>
