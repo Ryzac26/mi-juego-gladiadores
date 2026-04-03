@@ -3,119 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gladiadores Idle</title>
-    <!-- Cargamos el script de Telegram -->
+    <title>Gladiadores PvP</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #1a1a1a;
-            color: white;
-            text-align: center;
-            margin: 0;
-            padding: 20px;
+        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; margin: 0; overflow: hidden; }
+        
+        /* Contenedores principales */
+        .screen { display: none; padding: 20px; }
+        .active { display: block; }
+
+        /* Estadísticas */
+        .stats-bar { background: #333; padding: 10px; display: flex; justify-content: space-around; }
+        .gold { color: #f1c40f; font-weight: bold; }
+
+        /* Arena de Combate */
+        .arena {
+            height: 250px;
+            background: linear-gradient(to bottom, #444, #222);
+            position: relative;
+            margin: 20px 0;
+            border-bottom: 5px solid #555;
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            padding-bottom: 20px;
         }
-        .container {
-            max-width: 400px;
-            margin: 0 auto;
-            background: #2a2a2a;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+
+        /* Gladiadores Animados */
+        .gladiator {
+            width: 80px;
+            height: 100px;
+            position: relative;
+            transition: transform 0.2s;
         }
-        .gladiador-box {
-            border: 2px solid #ff9f43;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 10px;
-            background: #333;
+
+        .visual { font-size: 50px; } /* Usaremos emojis, pero aquí iría tu imagen */
+
+        /* Animación de Respirar (Idle) */
+        .idle { animation: breathe 2s infinite ease-in-out; }
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
-        .premium {
-            border-color: #00d2d3;
-            background: #222f3e;
+
+        /* Animación de Ataque */
+        .attack-left { animation: attackL 0.5s; }
+        @keyframes attackL {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(100px) rotate(10deg); }
+            100% { transform: translateX(0); }
         }
+
+        .attack-right { animation: attackR 0.5s; }
+        @keyframes attackR {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(-100px) rotate(-10deg); }
+            100% { transform: translateX(0); }
+        }
+
+        /* Barras de Vida */
+        .hp-container { width: 100px; background: red; height: 10px; border-radius: 5px; margin-bottom: 5px; }
+        .hp-fill { height: 100%; background: #2ecc71; width: 100%; transition: width 0.3s; }
+
         button {
-            background-color: #ff9f43;
-            color: black;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 5px;
-            cursor: pointer;
-            width: 100%;
+            background: #e67e22; color: white; border: none; padding: 15px 30px;
+            font-size: 18px; border-radius: 10px; cursor: pointer;
         }
-        button:hover { background-color: #ffb167; }
-        .gold-display {
-            font-size: 24px;
-            color: #feca57;
-            font-weight: bold;
-            margin: 10px 0;
-        }
-        .tag {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 5px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        .tag-free { background: #576574; color: white; }
-        .tag-premium { background: #10ac84; color: white; }
+        .log { background: #000; height: 100px; overflow-y: scroll; font-size: 12px; padding: 10px; margin-top: 10px; text-align: left; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h2>⚔️ Arena de Gladiadores ⚔️</h2>
-        <p id="welcome-msg">Cargando guerrero...</p>
+    <div class="stats-bar">
+        <span>💰 <span id="gold">0</span></span>
+        <span>⚔️ Nivel: <span id="lvl">1</span></span>
+    </div>
 
-        <div class="gold-display">💰 Oro: <span id="gold-count">0</span></div>
+    <!-- PANTALLA PRINCIPAL -->
+    <div id="lobby" class="screen active">
+        <h1>Mi Gladiador</h1>
+        <div class="gladiator idle"><div class="visual">🛡️</div></div>
+        <p>¿Listo para la arena?</p>
+        <button onclick="startBattle()">BUSCAR PELEA (PvP)</button>
+    </div>
 
-        <!-- Gladiador FREE -->
-        <div class="gladiador-box">
-            <span class="tag tag-free">FREE</span>
-            <h3>Espartaco</h3>
-            <p>Genera: 1 moneda/seg</p>
-            <button onclick="trainGladiator('free')">Entrenar (+1 Nivel)</button>
+    <!-- PANTALLA DE COMBATE -->
+    <div id="combat" class="screen">
+        <div class="arena">
+            <!-- Jugador -->
+            <div>
+                <div class="hp-container"><div id="hp-player" class="hp-fill"></div></div>
+                <div id="player-sprite" class="gladiator idle"><div class="visual">🛡️</div></div>
+                <span>Tú</span>
+            </div>
+
+            <!-- Enemigo -->
+            <div>
+                <div class="hp-container"><div id="hp-enemy" class="hp-fill"></div></div>
+                <div id="enemy-sprite" class="gladiator idle"><div class="visual">👹</div></div>
+                <span>Enemigo</span>
+            </div>
         </div>
-
-        <!-- Gladiador PREMIUM -->
-        <div class="gladiador-box premium">
-            <span class="tag tag-premium">PREMIUM</span>
-            <h3>Crixo el Magnífico</h3>
-            <p>Genera: 5 monedas/seg</p>
-            <button onclick="buyPremium()" style="background-color: #10ac84; color: white;">Desbloquear (⭐ Stars)</button>
-        </div>
+        <div id="battle-log" class="log">Iniciando combate...</div>
     </div>
 
     <script>
-        // Inicializar Telegram WebApp
         const tele = window.Telegram.WebApp;
-        tele.ready(); // Avisa a Telegram que la app está lista
-        tele.expand(); // Abre la app a pantalla completa
+        tele.expand();
 
-        // Mostrar nombre del usuario de Telegram
-        const username = tele.initDataUnsafe.user ? tele.initDataUnsafe.user.first_name : "Gladiador";
-        document.getElementById('welcome-msg').innerText = `¡Bienvenido, ${username}!`;
-
-        // Lógica del Juego (Idle)
         let gold = 0;
-        let goldPerSecond = 1; // Empezamos con el gladiador free
+        let playerStats = { hp: 100, maxHp: 100, atk: 15, premium: false };
+        let enemyStats = { hp: 80, maxHp: 80, atk: 10 };
 
-        // Función que suma oro automáticamente cada segundo
-        setInterval(() => {
-            gold += goldPerSecond;
-            document.getElementById('gold-count').innerText = gold;
-        }, 1000);
-
-        function trainGladiator(type) {
-            goldPerSecond += 1;
-            alert("¡Tu gladiador ha mejorado! Ahora genera más oro.");
+        function startBattle() {
+            document.getElementById('lobby').classList.remove('active');
+            document.getElementById('combat').classList.add('active');
+            
+            // Reset vidas
+            playerStats.hp = playerStats.maxHp;
+            enemyStats.hp = 80 + (Math.random() * 40);
+            enemyStats.maxHp = enemyStats.hp;
+            updateHP();
+            
+            setTimeout(battleTurn, 1000);
         }
 
-        function buyPremium() {
-            // Aquí irá la pasarela de pago de Telegram
-            alert("Pronto podrás comprar este Gladiador con Telegram Stars.");
+        function battleTurn() {
+            if (playerStats.hp <= 0 || enemyStats.hp <= 0) return endGame();
+
+            // --- TURNO JUGADOR ---
+            const pSprite = document.getElementById('player-sprite');
+            pSprite.classList.remove('idle');
+            pSprite.classList.add('attack-left');
+            
+            let pDmg = playerStats.atk + Math.floor(Math.random() * 5);
+            enemyStats.hp -= pDmg;
+            log(`Atacas al enemigo y quitas ${pDmg} HP`);
+
+            setTimeout(() => {
+                pSprite.classList.remove('attack-left');
+                pSprite.classList.add('idle');
+                updateHP();
+
+                if (enemyStats.hp <= 0) return endGame();
+
+                // --- TURNO ENEMIGO (Después de 1 segundo) ---
+                setTimeout(() => {
+                    const eSprite = document.getElementById('enemy-sprite');
+                    eSprite.classList.remove('idle');
+                    eSprite.classList.add('attack-right');
+                    
+                    let eDmg = enemyStats.atk + Math.floor(Math.random() * 5);
+                    playerStats.hp -= eDmg;
+                    log(`¡El enemigo te golpea por ${eDmg} HP!`);
+
+                    setTimeout(() => {
+                        eSprite.classList.remove('attack-right');
+                        eSprite.classList.add('idle');
+                        updateHP();
+                        
+                        if (playerStats.hp <= 0) return endGame();
+                        setTimeout(battleTurn, 1000);
+                    }, 500);
+                }, 800);
+
+            }, 500);
+        }
+
+        function updateHP() {
+            document.getElementById('hp-player').style.width = (playerStats.hp / playerStats.maxHp * 100) + "%";
+            document.getElementById('hp-enemy').style.width = (enemyStats.hp / enemyStats.maxHp * 100) + "%";
+        }
+
+        function log(msg) {
+            const l = document.getElementById('battle-log');
+            l.innerHTML += `<br>${msg}`;
+            l.scrollTop = l.scrollHeight;
+        }
+
+        function endGame() {
+            if (playerStats.hp > 0) {
+                log("<b style='color:lime'>¡VICTORIA! Ganaste 50 monedas.</b>");
+                gold += 50;
+                document.getElementById('gold').innerText = gold;
+            } else {
+                log("<b style='color:red'>DERROTA... Entrena más.</b>");
+            }
+            
+            setTimeout(() => {
+                document.getElementById('combat').classList.remove('active');
+                document.getElementById('lobby').classList.add('active');
+                document.getElementById('battle-log').innerHTML = "Iniciando combate...";
+            }, 3000);
         }
     </script>
 </body>
