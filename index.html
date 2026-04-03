@@ -2,140 +2,329 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Pixel Gladiator: Blood & Gold</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pixel Gladiator: Empire of Stars</title>
+    
+    <!-- SDK de Telegram -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
     <style>
-        body { background: #000; color: #fff; font-family: 'Courier New', monospace; text-align: center; image-rendering: pixelated; margin: 0; }
-        .pixel-border { border: 4px solid #fff; padding: 10px; margin: 10px; background: #1a1a1a; }
-        .gold-text { color: #f1c40f; font-size: 1.5em; text-shadow: 2px 2px #000; }
-        
-        @keyframes idle { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-        .sprite { font-size: 50px; animation: idle 1s infinite; margin: 20px; }
+        /* ESTILO PIXEL ART HARDCORE */
+        @font-face {
+            font-family: 'Retro';
+            src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        }
 
-        .btn { background: #960000; color: #fff; border: 4px solid #fff; padding: 15px; width: 80%; font-family: inherit; font-weight: bold; cursor: pointer; }
-        .btn:disabled { background: #444; border-color: #888; }
+        :root {
+            --gold: #f1c40f;
+            --blood: #960000;
+            --dark: #0a0a0a;
+            --stone: #2c3e50;
+        }
 
-        .market { border: 2px dashed #f1c40f; margin: 20px; padding: 10px; }
-        .shop-item { display: flex; justify-content: space-between; align-items: center; background: #222; margin: 5px 0; padding: 10px; font-size: 0.8em; }
-        .price-stars { color: #00d2ff; font-weight: bold; cursor: pointer; }
+        body { 
+            background-color: var(--dark); 
+            color: white; 
+            font-family: 'Courier New', Courier, monospace; 
+            margin: 0; padding: 0; 
+            image-rendering: pixelated;
+            user-select: none;
+        }
+
+        .header {
+            background: #1a1a1a;
+            border-bottom: 4px solid var(--stone);
+            padding: 15px;
+            position: sticky; top: 0; z-index: 100;
+        }
+
+        .gold-display {
+            color: var(--gold);
+            font-size: 1.8em;
+            font-weight: bold;
+            text-shadow: 3px 3px #000;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            font-size: 0.8em;
+            margin-top: 10px;
+            color: #aaa;
+        }
+
+        /* ANIMACIÓN DEL GLADIADOR */
+        @keyframes bounce {
+            0%, 100% { transform: scale(1) translateY(0); }
+            50% { transform: scale(1.1) translateY(-10px); }
+        }
+
+        .gladiator-container {
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .sprite {
+            font-size: 80px;
+            display: inline-block;
+            animation: bounce 1.2s infinite ease-in-out;
+            filter: drop-shadow(0 10px 5px rgba(0,0,0,0.5));
+        }
+
+        /* BOTONES */
+        .btn {
+            background: var(--blood);
+            border: 4px solid #fff;
+            color: white;
+            padding: 15px;
+            width: 90%;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 1.1em;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #500000;
+            margin-bottom: 20px;
+        }
+
+        .btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #500000; }
+
+        /* MERCADO DE ESTRELLAS (PAGO REAL) */
+        .stars-market {
+            border: 4px dashed var(--gold);
+            margin: 20px;
+            padding: 15px;
+            background: #111;
+        }
+
+        .stars-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #222;
+            padding: 10px;
+            margin: 5px 0;
+            border: 2px solid #333;
+        }
+
+        .price-xtr {
+            color: #00d2ff;
+            font-weight: bold;
+            background: #002b36;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* TIENDA DE GLADIADORES */
+        .shop-container { padding: 10px; }
+
+        .shop-card {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            margin-bottom: 10px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .shop-info b { color: var(--gold); display: block; }
+        .shop-info span { font-size: 0.7em; color: #888; }
+
+        .buy-button {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 8px 12px;
+            font-weight: bold;
+            font-family: inherit;
+        }
+
+        .buy-button:disabled { background: #444; color: #777; }
     </style>
 </head>
 <body>
 
-    <div class="pixel-border">
-        <div class="gold-text">ORO: <span id="gold">0</span> 💰</div>
-        <div style="font-size: 0.7em;">PROD: <span id="pps">0</span> gloria/s</div>
-        <div style="font-size: 0.7em;">MULT: x<span id="multi">1</span></div>
-    </div>
-
-    <div class="sprite">🛡️</div>
-
-    <button class="btn" onclick="claim()">RECLAMAR ORO (⚔️ <span id="glory">0</span>)</button>
-
-    <div class="market">
-        <div style="color:#f1c40f; font-size: 0.6em;">TIENDA DEL CÉSAR (USD)</div>
-        <div class="shop-item">
-            <span>ENTRENAMIENTO DIVINO (X2)</span>
-            <span class="price-stars" onclick="buyStars('x2')">⭐ 250</span>
+    <div class="header">
+        <div class="gold-display">ORO: <span id="gold">0</span> 💰</div>
+        <div class="stats-bar">
+            <span>⚔️ GLORIA: <span id="glory">0</span></span>
+            <span>⚡ MULTI: x<span id="multi">1</span></span>
         </div>
     </div>
 
-    <div id="shop" style="padding: 10px;"></div>
+    <div class="gladiator-container">
+        <div class="sprite" id="main-sprite">🛡️</div>
+        <button class="btn" onclick="claimGlory()">RECLAMAR ORO</button>
+
+        <div class="stars-market">
+            <div style="color: var(--gold); font-size: 0.8em; margin-bottom: 10px;">MERCADO DEL CÉSAR (PAGOS REALES)</div>
+            <div class="stars-item">
+                <span style="font-size: 0.7em;">ENTRENAMIENTO DIVINO (X2)</span>
+                <div class="price-xtr" onclick="buyStars('x2')">⭐ 250</div>
+            </div>
+            <div class="stars-item">
+                <span style="font-size: 0.7em;">SALTO TEMPORAL (24H)</span>
+                <div class="price-xtr" onclick="buyStars('skip')">⭐ 500</div>
+            </div>
+        </div>
+
+        <div style="text-align: left; padding-left: 15px; color: var(--gold); font-size: 0.9em;">RECLUTAR:</div>
+        <div id="shop" class="shop-container"></div>
+    </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        const API = "TU_URL_DE_RENDER"; // <--- CAMBIA ESTO
+        // TU URL DE RENDER ACTUALIZADA
+        const API_URL = "https://mi-juego-gladiadores.onrender.com"; 
         tg.expand();
 
-        let state = { gold: 100, glory: 0, owned: [0,0,0,0], multi: 1 };
-        const gladiators = [
-            { id:0, name: "Esclavo", cost: 20, p: 1 },
-            { id:1, name: "Thraex", cost: 300, p: 8 },
-            { id:2, name: "Murmillo", cost: 2000, p: 40 },
-            { id:3, name: "Campeón", cost: 15000, p: 200 }
+        // Dificultad Hardcore: El costo sube un 45% por cada nivel
+        const DIFFICULTY_CURVE = 1.45;
+
+        let state = {
+            gold: 50,
+            glory: 0,
+            owned: [0, 0, 0, 0],
+            multi: 1
+        };
+
+        const gladiatorData = [
+            { id: 0, name: "Esclavo", cost: 20, prod: 1, icon: "🛡️" },
+            { id: 1, name: "Reciario", cost: 250, prod: 10, icon: "🔱" },
+            { id: 2, name: "Murmillo", cost: 2000, prod: 50, icon: "⚔️" },
+            { id: 3, name: "Centurión", cost: 15000, prod: 250, icon: "👑" }
         ];
 
-        async function sync(save = false) {
-            const res = await fetch(`${API}/sync`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    id: tg.initDataUnsafe.user.id,
-                    username: tg.initDataUnsafe.user.username,
-                    gold: state.gold, glory: state.glory, owned: state.owned, multi: state.multi,
-                    save: save
-                })
-            });
-            const data = await res.json();
-            if(data.id) {
-                state.gold = Number(data.gold);
-                state.multi = data.multi;
-                state.owned = data.owned;
+        // SINCRONIZACIÓN CON EL SERVIDOR
+        async function syncWithServer(isSaving = false) {
+            try {
+                const user = tg.initDataUnsafe.user;
+                const response = await fetch(`${API_URL}/sync`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: user.id,
+                        username: user.username,
+                        gold: state.gold,
+                        glory: state.glory,
+                        owned: state.owned,
+                        multi: state.multi,
+                        save: isSaving
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.id) {
+                    state.gold = Number(data.gold);
+                    state.multi = data.multi;
+                    state.owned = data.owned;
+                    updateUI();
+                }
+            } catch (e) {
+                console.error("Error de sincronización:", e);
             }
-            render();
         }
 
         function calculatePPS() {
-            let p = 0;
-            gladiators.forEach(g => p += state.owned[g.id] * g.p);
-            return p * state.multi;
+            let base = 0;
+            gladiatorData.forEach(g => {
+                base += state.owned[g.id] * g.prod;
+            });
+            return base * state.multi;
         }
 
-        function render() {
+        function updateUI() {
             document.getElementById('gold').innerText = Math.floor(state.gold).toLocaleString();
-            document.getElementById('pps').innerText = calculatePPS();
             document.getElementById('multi').innerText = state.multi;
             
             const shop = document.getElementById('shop');
             shop.innerHTML = '';
-            gladiators.forEach(g => {
-                const cost = Math.floor(g.cost * Math.pow(1.45, state.owned[g.id]));
+
+            gladiatorData.forEach(g => {
+                const count = state.owned[g.id];
+                const cost = Math.floor(g.cost * Math.pow(DIFFICULTY_CURVE, count));
+                
                 shop.innerHTML += `
-                    <div class="shop-item">
-                        <span>${g.name} (x${state.owned[g.id]})</span>
-                        <button onclick="buy(${g.id}, ${cost})" ${state.gold < cost ? 'disabled' : ''}>${cost} 💰</button>
-                    </div>`;
+                    <div class="shop-card">
+                        <div class="shop-info">
+                            <b>${g.icon} ${g.name} (x${count})</b>
+                            <span>+${g.prod * state.multi} oro/seg</span>
+                        </div>
+                        <button class="buy-button" onclick="buyGladiator(${g.id}, ${cost})" ${state.gold < cost ? 'disabled' : ''}>
+                            ${cost} 💰
+                        </button>
+                    </div>
+                `;
             });
         }
 
-        function buy(id, cost) {
-            if(state.gold >= cost) {
+        function buyGladiator(id, cost) {
+            if (state.gold >= cost) {
                 state.gold -= cost;
                 state.owned[id]++;
-                render();
-                sync(true);
+                tg.HapticFeedback.impactOccurred('medium');
+                updateUI();
+                syncWithServer(true); // Guardar compra
             }
         }
 
-        function claim() {
-            state.gold += state.glory;
-            state.glory = 0;
-            tg.HapticFeedback.impactOccurred('heavy');
-            sync(true);
+        function claimGlory() {
+            if (state.glory > 0) {
+                state.gold += state.glory;
+                state.glory = 0;
+                tg.HapticFeedback.notificationOccurred('success');
+                
+                // Efecto visual de ataque
+                const sprite = document.getElementById('main-sprite');
+                sprite.style.animation = 'none';
+                setTimeout(() => sprite.style.animation = 'bounce 0.5s infinite', 10);
+
+                updateUI();
+                syncWithServer(true);
+            }
         }
 
+        // PAGOS REALES CON TELEGRAM STARS
         async function buyStars(type) {
-            const res = await fetch(`${API}/invoice`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, type })
-            });
-            const { link } = await res.json();
-            tg.openInvoice(link, (status) => {
-                if(status === 'paid') location.reload();
+            tg.showConfirm(`¿Quieres tributar al César para obtener esta ventaja?`, async (confirm) => {
+                if (confirm) {
+                    try {
+                        const response = await fetch(`${API_URL}/invoice`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                userId: tg.initDataUnsafe.user.id,
+                                type: type
+                            })
+                        });
+                        const { link } = await response.json();
+                        
+                        tg.openInvoice(link, (status) => {
+                            if (status === 'paid') {
+                                tg.showAlert("¡El César ha recibido tu oro! Los dioses te sonríen.");
+                                location.reload(); // Recargar para aplicar cambios del servidor
+                            }
+                        });
+                    } catch (e) {
+                        tg.showAlert("Error al conectar con el tesoro imperial.");
+                    }
+                }
             });
         }
 
+        // Bucle de producción
         setInterval(() => {
-            state.glory += (calculatePPS() / 10);
+            const pps = calculatePPS();
+            state.glory += (pps / 10);
             document.getElementById('glory').innerText = Math.floor(state.glory).toLocaleString();
         }, 100);
 
-        // Guardado automático cada 60s
-        setInterval(() => sync(true), 60000);
+        // Auto-guardado cada 45 segundos
+        setInterval(() => syncWithServer(true), 45000);
 
-        sync();
+        // Iniciar
+        syncWithServer();
     </script>
 </body>
 </html>
