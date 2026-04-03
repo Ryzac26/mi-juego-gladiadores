@@ -3,95 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Titan Mining Cloud</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>Gladiator Idle Telegram</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
     <style>
-        :root { --neon: #00ff88; --bg: #0d1117; --card: #161b22; }
-        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; padding-bottom: 50px; }
-        .header { background: var(--card); padding: 25px; text-align: center; border-bottom: 2px solid var(--neon); }
-        .balance { font-size: 2.8em; color: var(--neon); font-weight: bold; margin: 10px 0; }
-        .plan-container { padding: 15px; }
-        .plan-card {
-            background: var(--card); border: 1px solid #30363d; border-radius: 12px;
-            padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;
-        }
-        .plan-info b { color: var(--neon); font-size: 1.1em; display: block; }
-        .plan-info span { font-size: 0.8em; color: #8b949e; }
-        .btn-buy { background: var(--neon); color: black; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .crypto-tag { font-size: 0.7em; color: #58a6ff; margin-top: 5px; display: block; }
+        body { margin: 0; padding: 0; background-color: #222; overflow: hidden; font-family: sans-serif; }
+        canvas { display: block; margin: 0 auto; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <div style="font-size: 0.8em; color: #8b949e;">BALANCE ACUMULADO (USD)</div>
-        <div class="balance">$<span id="bal">0.000000</span></div>
-        <div style="font-size: 0.7em;">Potencia: <span id="hash">0.0</span> GH/s</div>
-    </div>
+<script>
+// --- CONFIGURACIÓN DE ECONOMÍA ---
+const ECON = {
+    GOLD_PER_TOKEN: 1000,    // 1000 Oro = 1 Token
+    TOKENS_FOR_ONE_USD: 100, // 100 Tokens = $1.00 USD
+    ENERGY_REGEN_SEC: 10,    // 1 energía cada 10 seg (Acelerado para el ejemplo)
+    MAX_ENERGY: 100
+};
 
-    <div class="plan-container" id="plans"></div>
+// --- ESTADO INICIAL DEL JUGADOR ---
+let saveGame = JSON.parse(localStorage.getItem('gladiatorSave')) || {
+    gold: 0,
+    tokens: 0,
+    energy: 100,
+    lastEnergyUpdate: Date.now(),
+    gladLevel: 1,
+    beastLevel: 1,
+    beastMultiplier: 1.05 // 5% bono inicial
+};
 
-    <script>
-        const tg = window.Telegram.WebApp;
-        const API = "https://mi-juego-gladiadores.onrender.com";
-        tg.expand();
+class MainScene extends Phaser.Scene {
+    constructor() {
+        super('MainScene');
+    }
 
-        const services = [
-            { name: "Nano Rig", price: 10, roi: 20, hash: 10 },
-            { name: "Starter Box", price: 50, roi: 100, hash: 50 },
-            { name: "Silver Rack", price: 250, roi: 500, hash: 250 },
-            { name: "Gold Server", price: 1000, roi: 2000, hash: 1000 },
-            { name: "Titan Farm", price: 5000, roi: 10000, hash: 5000 }
-        ];
+    create() {
+        const { width, height } = this.scale;
 
-        let state = { bal: 0, hash: 0.1 };
+        // Fondo y Decoración
+        this.add.rectangle(width/2, height/2, width, height, 0xdeb887); // Arena
+        this.add.text(width/2, 50, "GLADIATOR IDLE", { fontSize: '32px', fill: '#000', fontWeight: 'bold' }).setOrigin(0.5);
 
-        function renderPlans() {
-            const container = document.getElementById('plans');
-            services.forEach(s => {
-                container.innerHTML += `
-                    <div class="plan-card">
-                        <div class="plan-info">
-                            <b>${s.name}</b>
-                            <span>Costo: $${s.price} | ROI: $${s.roi}</span>
-                            <span class="crypto-tag">Acepta: ⭐ USDT ₿ BTC</span>
-                        </div>
-                        <button class="btn-buy" onclick="pay(${s.price}, '${s.name}')">INVERTIR</button>
-                    </div>`;
-            });
+        // --- UI TEXTOS ---
+        this.goldTxt = this.add.text(20, 100, `Oro: 0`, { fontSize: '20px', fill: '#000' });
+        this.tokenTxt = this.add.text(20, 130, `Tokens: 0`, { fontSize: '20px', fill: '#800080' });
+        this.usdTxt = this.add.text(20, 160, `Balance: $0.00 USD`, { fontSize: '22px', fill: '#006400', fontWeight: 'bold' });
+        this.energyTxt = this.add.text(width - 150, 100, `Energía: 100`, { fontSize: '20px', fill: '#0000ff' });
+
+        // --- PERSONAJES (Visuales Simples) ---
+        // El Gladiador
+        this.gladiator = this.add.circle(width/2 - 60, height/2, 40, 0xff0000).setStrokeStyle(4, 0x000);
+        this.add.text(width/2 - 60, height/2 + 50, "Tú (Niv." + saveGame.gladLevel + ")", { fontSize: '16px', fill: '#000' }).setOrigin(0.5);
+
+        // La Bestia (Acompañante)
+        this.beast = this.add.rectangle(width/2 + 60, height/2 + 20, 60, 40, 0x8b4513).setStrokeStyle(2, 0x000);
+        this.beastTxt = this.add.text(width/2 + 60, height/2 + 50, "Bestia (Niv." + saveGame.beastLevel + ")", { fontSize: '16px', fill: '#000' }).setOrigin(0.5);
+
+        // --- BOTONES DE ACCIÓN ---
+        
+        // 1. Entrenar (Gana Oro manualmente)
+        let btnTrain = this.createButton(width/2, height - 250, "ENTRENAR (Gana Oro)", 0x4CAF50, () => {
+            this.gainGold(10 * saveGame.gladLevel);
+            this.tweens.add({ targets: this.gladiator, scale: 1.2, duration: 50, yoyo: true });
+        });
+
+        // 2. Batalla (Gana Tokens consumiendo energía)
+        let btnBattle = this.createButton(width/2, height - 180, "BATALLA (-10 Energía)", 0xe91e63, () => {
+            this.startBattle();
+        });
+
+        // 3. Subir Nivel Gladiador
+        this.btnUpgradeGlad = this.createButton(width/2, height - 110, "SUBIR GLADIADOR (Costo: 0)", 0x2196F3, () => {
+            this.upgradeGlad();
+        });
+
+        // 4. Fusionar/Subir Bestia
+        this.btnUpgradeBeast = this.createButton(width/2, height - 40, "FUSIONAR BESTIA (Costo: 0)", 0xff9800, () => {
+            this.upgradeBeast();
+        });
+
+        // --- LOOP DE TIEMPO (Oro Pasivo) ---
+        this.time.addEvent({
+            delay: 1000,
+            callback: this.onSecondUpdate,
+            callbackScope: this,
+            loop: true
+        });
+    }
+
+    update() {
+        // Actualizar Textos constantemente
+        this.goldTxt.setText(`Oro: ${Math.floor(saveGame.gold)}`);
+        this.tokenTxt.setText(`Tokens: ${saveGame.tokens}`);
+        this.energyTxt.setText(`Energía: ${Math.floor(saveGame.energy)} / ${ECON.MAX_ENERGY}`);
+        
+        let usd = (saveGame.tokens / ECON.TOKENS_FOR_ONE_USD).toFixed(2);
+        this.usdTxt.setText(`Balance: $${usd} USD`);
+
+        this.btnUpgradeGlad.getChildAt(1).setText(`SUBIR GLADIADOR (Costo: ${saveGame.gladLevel * 100})`);
+        this.btnUpgradeBeast.getChildAt(1).setText(`FUSIONAR BESTIA (Costo: ${saveGame.beastLevel * 500})`);
+    }
+
+    onSecondUpdate() {
+        // Ganancia pasiva: Nivel Gladiador * Multiplicador Bestia
+        let income = (saveGame.gladLevel * 2) * saveGame.beastMultiplier;
+        saveGame.gold += income;
+
+        // Regeneración de energía
+        if (saveGame.energy < ECON.MAX_ENERGY) {
+            saveGame.energy = Math.min(ECON.MAX_ENERGY, saveGame.energy + (1 / ECON.ENERGY_REGEN_SEC));
         }
 
-        async function pay(usd, planName) {
-            // Convertimos USD a Stars (Ratio aproximado: 1 USD = 50 Stars)
-            const stars = usd * 50;
-            
-            tg.showConfirm(`¿Invertir $${usd} (${stars} ⭐) en ${planName}?`, async (ok) => {
-                if(ok) {
-                    const res = await fetch(`${API}/invoice`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, amount: stars, title: planName })
-                    });
-                    const { link } = await res.json();
-                    tg.openInvoice(link, (status) => {
-                        if(status === 'paid') {
-                            tg.showAlert("Inversión Exitosa. Minado acelerado.");
-                            location.reload();
-                        }
-                    });
-                }
-            });
+        // Auto-guardado
+        localStorage.setItem('gladiatorSave', JSON.stringify(saveGame));
+    }
+
+    gainGold(amount) {
+        saveGame.gold += amount;
+    }
+
+    startBattle() {
+        if (saveGame.energy >= 10) {
+            saveGame.energy -= 10;
+            let tokensGanados = Math.floor(Math.random() * 5) + 1; // Gana entre 1 y 5 tokens
+            saveGame.tokens += tokensGanados;
+            alert(`¡Victoria! Ganaste ${tokensGanados} Tokens.`);
+        } else {
+            alert("No tienes suficiente energía. Espera a que recargue.");
         }
+    }
 
-        // Simulación de minado en tiempo real (3.63% diario sobre la inversión)
-        setInterval(() => {
-            const daily = state.hash * 0.03636;
-            state.bal += daily / 86400;
-            document.getElementById('bal').innerText = state.bal.toFixed(6);
-            document.getElementById('hash').innerText = state.hash.toFixed(1);
-        }, 1000);
+    upgradeGlad() {
+        let cost = saveGame.gladLevel * 100;
+        if (saveGame.gold >= cost) {
+            saveGame.gold -= cost;
+            saveGame.gladLevel++;
+            alert("¡Gladiador nivel " + saveGame.gladLevel + "!");
+        }
+    }
 
-        renderPlans();
-    </script>
+    upgradeBeast() {
+        let cost = saveGame.beastLevel * 500;
+        if (saveGame.gold >= cost) {
+            saveGame.gold -= cost;
+            saveGame.beastLevel++;
+            saveGame.beastMultiplier += 0.05; // +5% de producción por nivel
+            this.beastTxt.setText("Bestia (Niv." + saveGame.beastLevel + ")");
+            alert("¡Bestia fusionada! Bono actual: +" + Math.round((saveGame.beastMultiplier - 1) * 100) + "%");
+        }
+    }
+
+    // Función auxiliar para crear botones
+    createButton(x, y, label, color, callback) {
+        let container = this.add.container(x, y);
+        let bg = this.add.rectangle(0, 0, 300, 50, color).setInteractive({ useHandCursor: true });
+        let txt = this.add.text(0, 0, label, { fontSize: '18px', fill: '#fff' }).setOrigin(0.5);
+        
+        bg.on('pointerdown', callback);
+        bg.on('pointerover', () => bg.setAlpha(0.8));
+        bg.on('pointerout', () => bg.setAlpha(1));
+
+        container.add([bg, txt]);
+        return container;
+    }
+}
+
+const config = {
+    type: Phaser.AUTO,
+    width: 400,
+    height: 700,
+    backgroundColor: '#333',
+    scene: MainScene,
+    physics: { default: 'arcade' }
+};
+
+const game = new Phaser.Game(config);
+</script>
+
 </body>
 </html>
