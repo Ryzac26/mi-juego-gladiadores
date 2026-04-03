@@ -3,168 +3,158 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gladiator Idle Telegram</title>
+    <title>Gladiator Conquest - Telegram</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; background-color: #222; overflow: hidden; font-family: sans-serif; }
-        canvas { display: block; margin: 0 auto; }
+        body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { border: 2px solid #555; }
     </style>
 </head>
 <body>
 
 <script>
-// --- CONFIGURACIÓN DE ECONOMÍA ---
-const ECON = {
-    GOLD_PER_TOKEN: 1000,    // 1000 Oro = 1 Token
-    TOKENS_FOR_ONE_USD: 100, // 100 Tokens = $1.00 USD
-    ENERGY_REGEN_SEC: 10,    // 1 energía cada 10 seg (Acelerado para el ejemplo)
-    MAX_ENERGY: 100
+const CONFIG_ECONOMY = {
+    GOLD_TO_USD: 10000, // 10,000 Oro = $1.00 USD aprox para balancear
+    ENERGY_MAX: 100,
+    REGEN_RATE: 5 // Segundos por punto de energía
 };
 
-// --- ESTADO INICIAL DEL JUGADOR ---
-let saveGame = JSON.parse(localStorage.getItem('gladiatorSave')) || {
-    gold: 0,
+let userData = JSON.parse(localStorage.getItem('gladiator_save_v2')) || {
+    gold: 500,
     tokens: 0,
     energy: 100,
-    lastEnergyUpdate: Date.now(),
-    gladLevel: 1,
-    beastLevel: 1,
-    beastMultiplier: 1.05 // 5% bono inicial
+    lvlGlad: 1,
+    lvlBeast: 1,
+    lastUpdate: Date.now()
 };
 
-class MainScene extends Phaser.Scene {
-    constructor() {
-        super('MainScene');
+class GameScene extends Phaser.Scene {
+    constructor() { super('GameScene'); }
+
+    preload() {
+        // Cargamos imágenes reales de servidores públicos para que se vea bien
+        this.load.image('sky', 'https://labs.phaser.io/assets/skies/space3.png');
+        this.load.image('ground', 'https://labs.phaser.io/assets/sprites/platform.png');
+        this.load.image('gladiator', 'https://labs.phaser.io/assets/sprites/knight.png');
+        this.load.image('beast', 'https://labs.phaser.io/assets/sprites/slime.png');
+        this.load.image('dummy', 'https://labs.phaser.io/assets/sprites/treasurechest.png');
+        this.load.image('coin', 'https://labs.phaser.io/assets/sprites/coin.png');
     }
 
     create() {
         const { width, height } = this.scale;
 
-        // Fondo y Decoración
-        this.add.rectangle(width/2, height/2, width, height, 0xdeb887); // Arena
-        this.add.text(width/2, 50, "GLADIATOR IDLE", { fontSize: '32px', fill: '#000', fontWeight: 'bold' }).setOrigin(0.5);
+        // --- ESCENARIO ---
+        this.add.image(width/2, height/2, 'sky').setDisplaySize(width, height).setAlpha(0.7);
+        let floor = this.add.tileSprite(width/2, height - 250, width, 100, 'ground').setTint(0x8B4513);
 
-        // --- UI TEXTOS ---
-        this.goldTxt = this.add.text(20, 100, `Oro: 0`, { fontSize: '20px', fill: '#000' });
-        this.tokenTxt = this.add.text(20, 130, `Tokens: 0`, { fontSize: '20px', fill: '#800080' });
-        this.usdTxt = this.add.text(20, 160, `Balance: $0.00 USD`, { fontSize: '22px', fill: '#006400', fontWeight: 'bold' });
-        this.energyTxt = this.add.text(width - 150, 100, `Energía: 100`, { fontSize: '20px', fill: '#0000ff' });
+        // --- PERSONAJES ---
+        // Nuestro Gladiador
+        this.player = this.add.sprite(width * 0.3, height - 320, 'gladiator').setScale(1.5);
+        this.playerLabel = this.add.text(this.player.x, this.player.y - 60, "NIV. " + userData.lvlGlad, { fontSize: '16px', fontWeight: 'bold' }).setOrigin(0.5);
 
-        // --- PERSONAJES (Visuales Simples) ---
-        // El Gladiador
-        this.gladiator = this.add.circle(width/2 - 60, height/2, 40, 0xff0000).setStrokeStyle(4, 0x000);
-        this.add.text(width/2 - 60, height/2 + 50, "Tú (Niv." + saveGame.gladLevel + ")", { fontSize: '16px', fill: '#000' }).setOrigin(0.5);
-
-        // La Bestia (Acompañante)
-        this.beast = this.add.rectangle(width/2 + 60, height/2 + 20, 60, 40, 0x8b4513).setStrokeStyle(2, 0x000);
-        this.beastTxt = this.add.text(width/2 + 60, height/2 + 50, "Bestia (Niv." + saveGame.beastLevel + ")", { fontSize: '16px', fill: '#000' }).setOrigin(0.5);
-
-        // --- BOTONES DE ACCIÓN ---
+        // La Bestia de compañía
+        this.pet = this.add.sprite(this.player.x - 60, this.player.y + 20, 'beast').setScale(0.8).setTint(0x00ff00);
         
-        // 1. Entrenar (Gana Oro manualmente)
-        let btnTrain = this.createButton(width/2, height - 250, "ENTRENAR (Gana Oro)", 0x4CAF50, () => {
-            this.gainGold(10 * saveGame.gladLevel);
-            this.tweens.add({ targets: this.gladiator, scale: 1.2, duration: 50, yoyo: true });
-        });
+        // El Objetivo (Dummy de entrenamiento)
+        this.target = this.add.sprite(width * 0.7, height - 320, 'dummy').setScale(1.2);
 
-        // 2. Batalla (Gana Tokens consumiendo energía)
-        let btnBattle = this.createButton(width/2, height - 180, "BATALLA (-10 Energía)", 0xe91e63, () => {
-            this.startBattle();
-        });
+        // --- INTERFAZ SUPERIOR (HUD) ---
+        let headerBg = this.add.rectangle(width/2, 60, width, 120, 0x000000, 0.6);
+        
+        this.goldIcon = this.add.image(30, 40, 'coin').setScale(0.6);
+        this.goldText = this.add.text(60, 30, "ORO: 0", { fontSize: '20px', fill: '#FFD700', fontWeight: 'bold' });
+        
+        this.usdText = this.add.text(60, 60, "VALOR: $0.00 USD", { fontSize: '16px', fill: '#00FF00' });
 
-        // 3. Subir Nivel Gladiador
-        this.btnUpgradeGlad = this.createButton(width/2, height - 110, "SUBIR GLADIADOR (Costo: 0)", 0x2196F3, () => {
-            this.upgradeGlad();
-        });
+        this.energyBarBg = this.add.rectangle(width - 110, 45, 150, 20, 0x333333);
+        this.energyBar = this.add.rectangle(width - 110, 45, 150, 20, 0x0000FF);
+        this.energyText = this.add.text(width - 185, 70, "ENERGÍA: 100/100", { fontSize: '14px' });
 
-        // 4. Fusionar/Subir Bestia
-        this.btnUpgradeBeast = this.createButton(width/2, height - 40, "FUSIONAR BESTIA (Costo: 0)", 0xff9800, () => {
-            this.upgradeBeast();
-        });
+        // --- PANEL DE BOTONES (ESTILO MÓVIL) ---
+        this.createMenuButton(width * 0.5, height - 160, "ENTRENAR (+ORO)", 0xF39C12, () => this.doTrain());
+        this.createMenuButton(width * 0.5, height - 100, "MEJORAR GUERRERO", 0x3498DB, () => this.upgradeGlad());
+        this.createMenuButton(width * 0.5, height - 40, "FUSIONAR BESTIA", 0x2ECC71, () => this.upgradeBeast());
 
-        // --- LOOP DE TIEMPO (Oro Pasivo) ---
-        this.time.addEvent({
-            delay: 1000,
-            callback: this.onSecondUpdate,
-            callbackScope: this,
-            loop: true
-        });
+        // Ciclo de ganancias pasivas
+        this.time.addEvent({ delay: 1000, callback: this.passiveLoop, callbackScope: this, loop: true });
     }
 
     update() {
-        // Actualizar Textos constantemente
-        this.goldTxt.setText(`Oro: ${Math.floor(saveGame.gold)}`);
-        this.tokenTxt.setText(`Tokens: ${saveGame.tokens}`);
-        this.energyTxt.setText(`Energía: ${Math.floor(saveGame.energy)} / ${ECON.MAX_ENERGY}`);
+        // Actualización visual de textos
+        this.goldText.setText("ORO: " + Math.floor(userData.gold).toLocaleString());
+        this.usdText.setText("VALOR ACUM: $" + (userData.gold / CONFIG_ECONOMY.GOLD_TO_USD).toFixed(2) + " USD");
         
-        let usd = (saveGame.tokens / ECON.TOKENS_FOR_ONE_USD).toFixed(2);
-        this.usdTxt.setText(`Balance: $${usd} USD`);
-
-        this.btnUpgradeGlad.getChildAt(1).setText(`SUBIR GLADIADOR (Costo: ${saveGame.gladLevel * 100})`);
-        this.btnUpgradeBeast.getChildAt(1).setText(`FUSIONAR BESTIA (Costo: ${saveGame.beastLevel * 500})`);
+        // Actualizar barra de energía
+        let enWidth = (userData.energy / CONFIG_ECONOMY.ENERGY_MAX) * 150;
+        this.energyBar.width = enWidth;
+        this.energyText.setText(`ENERGÍA: ${Math.floor(userData.energy)}/100`);
     }
 
-    onSecondUpdate() {
-        // Ganancia pasiva: Nivel Gladiador * Multiplicador Bestia
-        let income = (saveGame.gladLevel * 2) * saveGame.beastMultiplier;
-        saveGame.gold += income;
-
-        // Regeneración de energía
-        if (saveGame.energy < ECON.MAX_ENERGY) {
-            saveGame.energy = Math.min(ECON.MAX_ENERGY, saveGame.energy + (1 / ECON.ENERGY_REGEN_SEC));
-        }
-
-        // Auto-guardado
-        localStorage.setItem('gladiatorSave', JSON.stringify(saveGame));
-    }
-
-    gainGold(amount) {
-        saveGame.gold += amount;
-    }
-
-    startBattle() {
-        if (saveGame.energy >= 10) {
-            saveGame.energy -= 10;
-            let tokensGanados = Math.floor(Math.random() * 5) + 1; // Gana entre 1 y 5 tokens
-            saveGame.tokens += tokensGanados;
-            alert(`¡Victoria! Ganaste ${tokensGanados} Tokens.`);
-        } else {
-            alert("No tienes suficiente energía. Espera a que recargue.");
+    doTrain() {
+        if (userData.energy >= 1) {
+            userData.energy -= 1;
+            userData.gold += (userData.lvlGlad * 5);
+            
+            // Animación de ataque
+            this.tweens.add({
+                targets: this.player,
+                x: this.player.x + 50,
+                duration: 50,
+                yoyo: true,
+                onComplete: () => {
+                    // Animación del objetivo al ser golpeado
+                    this.tweens.add({ targets: this.target, angle: { from: -10, to: 10 }, duration: 50, yoyo: true });
+                }
+            });
         }
     }
 
     upgradeGlad() {
-        let cost = saveGame.gladLevel * 100;
-        if (saveGame.gold >= cost) {
-            saveGame.gold -= cost;
-            saveGame.gladLevel++;
-            alert("¡Gladiador nivel " + saveGame.gladLevel + "!");
+        let cost = userData.lvlGlad * 200;
+        if (userData.gold >= cost) {
+            userData.gold -= cost;
+            userData.lvlGlad++;
+            this.playerLabel.setText("NIV. " + userData.lvlGlad);
+            this.player.setScale(1.5 + (userData.lvlGlad * 0.05));
+            alert("¡Gladiador mejorado!");
         }
     }
 
     upgradeBeast() {
-        let cost = saveGame.beastLevel * 500;
-        if (saveGame.gold >= cost) {
-            saveGame.gold -= cost;
-            saveGame.beastLevel++;
-            saveGame.beastMultiplier += 0.05; // +5% de producción por nivel
-            this.beastTxt.setText("Bestia (Niv." + saveGame.beastLevel + ")");
-            alert("¡Bestia fusionada! Bono actual: +" + Math.round((saveGame.beastMultiplier - 1) * 100) + "%");
+        let cost = userData.lvlBeast * 1000;
+        if (userData.gold >= cost) {
+            userData.gold -= cost;
+            userData.lvlBeast++;
+            this.pet.setTint(Math.random() * 0xffffff); // Cambia de color al fusionar
+            alert("¡Bestia Nivel " + userData.lvlBeast + "! Bono pasivo aumentado.");
         }
     }
 
-    // Función auxiliar para crear botones
-    createButton(x, y, label, color, callback) {
-        let container = this.add.container(x, y);
-        let bg = this.add.rectangle(0, 0, 300, 50, color).setInteractive({ useHandCursor: true });
-        let txt = this.add.text(0, 0, label, { fontSize: '18px', fill: '#fff' }).setOrigin(0.5);
+    passiveLoop() {
+        // Oro pasivo según niveles
+        userData.gold += (userData.lvlGlad * 2) + (userData.lvlBeast * 10);
         
-        bg.on('pointerdown', callback);
-        bg.on('pointerover', () => bg.setAlpha(0.8));
-        bg.on('pointerout', () => bg.setAlpha(1));
+        // Regenerar energía
+        if (userData.energy < CONFIG_ECONOMY.ENERGY_MAX) {
+            userData.energy = Math.min(CONFIG_ECONOMY.ENERGY_MAX, userData.energy + (1 / CONFIG_ECONOMY.REGEN_RATE));
+        }
 
-        container.add([bg, txt]);
-        return container;
+        localStorage.setItem('gladiator_save_v2', JSON.stringify(userData));
+    }
+
+    createMenuButton(x, y, text, color, action) {
+        let btn = this.add.container(x, y);
+        let rect = this.add.rectangle(0, 0, 320, 50, color).setInteractive({ useHandCursor: true });
+        let txt = this.add.text(0, 0, text, { fontSize: '18px', fontWeight: 'bold', fill: '#fff' }).setOrigin(0.5);
+        
+        rect.on('pointerdown', () => {
+            rect.setAlpha(0.7);
+            action();
+        });
+        rect.on('pointerup', () => rect.setAlpha(1));
+        
+        btn.add([rect, txt]);
     }
 }
 
@@ -172,8 +162,7 @@ const config = {
     type: Phaser.AUTO,
     width: 400,
     height: 700,
-    backgroundColor: '#333',
-    scene: MainScene,
+    scene: GameScene,
     physics: { default: 'arcade' }
 };
 
