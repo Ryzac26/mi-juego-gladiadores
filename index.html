@@ -3,201 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CyberMining: Titan Hashrate</title>
+    <title>Titan Mining Cloud</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root {
-            --neon: #00ff88;
-            --bg: #0a0e14;
-            --card: #161b22;
-            --text: #e6edf3;
-        }
-
-        body { 
-            background: var(--bg); color: var(--text); 
-            font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0;
-            user-select: none;
-        }
-
-        /* DASHBOARD */
-        .dashboard {
-            background: linear-gradient(180deg, #161b22 0%, #0a0e14 100%);
-            padding: 30px 20px; text-align: center;
-            border-bottom: 2px solid var(--neon);
-        }
-
-        .balance-main { font-size: 2.5em; font-weight: bold; color: var(--neon); margin: 10px 0; }
-        .hashrate-info { font-size: 0.9em; color: #8b949e; letter-spacing: 1px; }
-
-        /* MINING ANIMATION */
-        .mining-anim {
-            height: 5px; background: #21262d; width: 80%; margin: 20px auto;
-            border-radius: 10px; overflow: hidden;
-        }
-        .progress-bar {
-            height: 100%; background: var(--neon); width: 0%;
-            animation: pulse 2s infinite linear;
-        }
-        @keyframes pulse { 0% { width: 0%; } 100% { width: 100%; } }
-
-        /* PLANES DE INVERSIÓN */
-        .section-title { padding: 20px; font-size: 1.1em; font-weight: bold; border-left: 4px solid var(--neon); margin: 10px 0; }
-
+        :root { --neon: #00ff88; --bg: #0d1117; --card: #161b22; }
+        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; padding-bottom: 50px; }
+        .header { background: var(--card); padding: 25px; text-align: center; border-bottom: 2px solid var(--neon); }
+        .balance { font-size: 2.8em; color: var(--neon); font-weight: bold; margin: 10px 0; }
+        .plan-container { padding: 15px; }
         .plan-card {
-            background: var(--card); margin: 15px; padding: 20px;
-            border-radius: 12px; border: 1px solid #30363d;
-            display: flex; justify-content: space-between; align-items: center;
+            background: var(--card); border: 1px solid #30363d; border-radius: 12px;
+            padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;
         }
-
-        .plan-info b { display: block; font-size: 1.1em; color: var(--neon); }
+        .plan-info b { color: var(--neon); font-size: 1.1em; display: block; }
         .plan-info span { font-size: 0.8em; color: #8b949e; }
-        .roi-badge { background: #238636; color: white; padding: 4px 8px; border-radius: 5px; font-size: 0.7em; margin-top: 5px; display: inline-block; }
-
-        .btn-buy {
-            background: var(--neon); color: black; border: none;
-            padding: 12px 15px; border-radius: 8px; font-weight: bold;
-            cursor: pointer; font-size: 0.9em;
-        }
-
-        /* MÉTODOS DE PAGO */
-        .payment-methods {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 15px;
-        }
-        .pay-btn {
-            background: #21262d; border: 1px solid #30363d; color: white;
-            padding: 10px; border-radius: 8px; font-size: 0.8em; text-align: center;
-        }
-
-        .footer-note { font-size: 0.7em; color: #484f58; text-align: center; padding: 20px; }
+        .btn-buy { background: var(--neon); color: black; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .crypto-tag { font-size: 0.7em; color: #58a6ff; margin-top: 5px; display: block; }
     </style>
 </head>
 <body>
 
-    <div class="dashboard">
-        <div class="hashrate-info">POTENCIA ACTUAL: <span id="hashrate">0.00</span> GH/s</div>
-        <div class="balance-main">$<span id="balance">0.000000</span></div>
-        <div class="mining-anim"><div class="progress-bar"></div></div>
-        <div style="font-size: 0.8em; color: var(--neon);">MINANDO EN LA NUBE...</div>
+    <div class="header">
+        <div style="font-size: 0.8em; color: #8b949e;">BALANCE ACUMULADO (USD)</div>
+        <div class="balance">$<span id="bal">0.000000</span></div>
+        <div style="font-size: 0.7em;">Potencia: <span id="hash">0.0</span> GH/s</div>
     </div>
 
-    <div class="section-title">HARDWARE DE MINERÍA (2x RETORNO)</div>
-
-    <!-- PLAN 1 -->
-    <div class="plan-card">
-        <div class="plan-info">
-            <b>Antminer S19 Pro</b>
-            <span>Inversión: $50.00</span>
-            <div class="roi-badge">RETORNO: $100 EN 55 DÍAS</div>
-        </div>
-        <button class="btn-buy" onclick="startPayment(50, 'S19')">COMPRAR</button>
-    </div>
-
-    <!-- PLAN 2 -->
-    <div class="plan-card">
-        <div class="plan-info">
-            <b>Titan V Server</b>
-            <span>Inversión: $200.00</span>
-            <div class="roi-badge">RETORNO: $400 EN 55 DÍAS</div>
-        </div>
-        <button class="btn-buy" onclick="startPayment(200, 'Titan')">COMPRAR</button>
-    </div>
-
-    <div class="section-title">MÉTODOS DE PAGO ACEPTADOS</div>
-    <div class="payment-methods">
-        <div class="pay-btn">⭐ Telegram Stars</div>
-        <div class="pay-btn">💵 USDT (TRC20)</div>
-        <div class="pay-btn">₿ Bitcoin</div>
-        <div class="pay-btn">🏦 Tarjeta (Pro)</div>
-    </div>
-
-    <div class="footer-note">
-        El sistema de minería en la nube Titan garantiza un retorno del 200% sobre la inversión en un ciclo de 55 días naturales.
-    </div>
+    <div class="plan-container" id="plans"></div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        const API_URL = "https://mi-juego-gladiadores.onrender.com";
+        const API = "https://mi-juego-gladiadores.onrender.com";
         tg.expand();
 
-        // ESTADO DE MINERÍA
-        let state = {
-            balance: 0,
-            hashrate: 0.5, // GH/s base gratis
-            daily_roi: 0 // Aumenta con compras
-        };
+        const services = [
+            { name: "Nano Rig", price: 10, roi: 20, hash: 10 },
+            { name: "Starter Box", price: 50, roi: 100, hash: 50 },
+            { name: "Silver Rack", price: 250, roi: 500, hash: 250 },
+            { name: "Gold Server", price: 1000, roi: 2000, hash: 1000 },
+            { name: "Titan Farm", price: 5000, roi: 10000, hash: 5000 }
+        ];
 
-        async function syncData(isSave = false) {
-            const user = tg.initDataUnsafe.user;
-            try {
-                const res = await fetch(`${API_URL}/sync`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        id: user.id,
-                        username: user.username,
-                        gold: state.balance, // Usamos la columna gold para el balance
-                        multi: state.hashrate,
-                        save: isSave
-                    })
-                });
-                const data = await res.json();
-                if(data.id) {
-                    state.balance = Number(data.gold);
-                    state.hashrate = data.multi;
-                }
-            } catch (e) { console.error("Sync Error"); }
+        let state = { bal: 0, hash: 0.1 };
+
+        function renderPlans() {
+            const container = document.getElementById('plans');
+            services.forEach(s => {
+                container.innerHTML += `
+                    <div class="plan-card">
+                        <div class="plan-info">
+                            <b>${s.name}</b>
+                            <span>Costo: $${s.price} | ROI: $${s.roi}</span>
+                            <span class="crypto-tag">Acepta: ⭐ USDT ₿ BTC</span>
+                        </div>
+                        <button class="btn-buy" onclick="pay(${s.price}, '${s.name}')">INVERTIR</button>
+                    </div>`;
+            });
         }
 
-        // LÓGICA DE PRODUCCIÓN (200% en 55 días)
-        // Significa que por cada $1 invertido, ganas $0.03636 diarios
-        setInterval(() => {
-            // Producción por segundo: (Hashrate * ROI_Constant) / 86400
-            // Si hashrate es el capital invertido:
-            const daily_production = state.hashrate * 0.03636; 
-            const per_second = daily_production / 86400;
+        async function pay(usd, planName) {
+            // Convertimos USD a Stars (Ratio aproximado: 1 USD = 50 Stars)
+            const stars = usd * 50;
             
-            state.balance += per_second;
-            document.getElementById('balance').innerText = state.balance.toFixed(6);
-            document.getElementById('hashrate').innerText = state.hashrate.toFixed(2);
-        }, 1000);
-
-        // PROCESAR PAGO
-        async function startPayment(amount, plan) {
-            tg.showConfirm(`¿Confirmas la inversión de $${amount} para duplicar tu capital en 55 días?`, async (confirm) => {
-                if (confirm) {
-                    // Llamamos a la factura de Telegram Stars (25 Stars = $1 aprox en este ejemplo)
-                    const starsAmount = amount * 25; 
-                    
-                    try {
-                        const res = await fetch(`${API_URL}/invoice`, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({
-                                userId: tg.initDataUnsafe.user.id,
-                                type: 'mining_upgrade',
-                                amount: starsAmount
-                            })
-                        });
-                        const { link } = await res.json();
-                        
-                        tg.openInvoice(link, (status) => {
-                            if (status === 'paid') {
-                                tg.showAlert("¡Hardware Activado! Tu velocidad de minería ha aumentado.");
-                                state.hashrate += amount; // Sumamos la inversión al poder de minado
-                                syncData(true);
-                            }
-                        });
-                    } catch (e) {
-                        tg.showAlert("Error al conectar con la pasarela de pago.");
-                    }
+            tg.showConfirm(`¿Invertir $${usd} (${stars} ⭐) en ${planName}?`, async (ok) => {
+                if(ok) {
+                    const res = await fetch(`${API}/invoice`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, amount: stars, title: planName })
+                    });
+                    const { link } = await res.json();
+                    tg.openInvoice(link, (status) => {
+                        if(status === 'paid') {
+                            tg.showAlert("Inversión Exitosa. Minado acelerado.");
+                            location.reload();
+                        }
+                    });
                 }
             });
         }
 
-        // Auto-guardado
-        setInterval(() => syncData(true), 30000);
-        
-        syncData();
+        // Simulación de minado en tiempo real (3.63% diario sobre la inversión)
+        setInterval(() => {
+            const daily = state.hash * 0.03636;
+            state.bal += daily / 86400;
+            document.getElementById('bal').innerText = state.bal.toFixed(6);
+            document.getElementById('hash').innerText = state.hash.toFixed(1);
+        }, 1000);
+
+        renderPlans();
     </script>
 </body>
 </html>
