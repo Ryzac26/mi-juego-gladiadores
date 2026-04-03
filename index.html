@@ -2,113 +2,297 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gladiator Tycoon</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gladiator Arena TMA</title>
+    
+    <!-- SDK Oficial de Telegram -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- SDK de AdsGram (Publicidad) -->
+    <script src="https://adsgram.ai/sdk/v1/adsgram-sdk.js"></script>
+    
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; margin: 0; padding: 20px; }
-        .stat-card { background: #333; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
-        .gladiator-list { display: flex; flex-direction: column; gap: 10px; }
-        .gladiator-item { background: #444; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
-        button { background: #e67e22; border: none; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        button:disabled { background: #7f8c8d; }
-        .claim-btn { background: #27ae60; width: 100%; padding: 20px; font-size: 1.2em; margin-top: 10px; }
+        :root {
+            --gold: #f1c40f;
+            --blood: #c0392b;
+            --stone: #2c3e50;
+            --bg: #121212;
+            --card: #1e1e1e;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            background: var(--bg); color: white; 
+            margin: 0; padding: 0; overflow-x: hidden;
+            user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Cabecera con Stats */
+        .header {
+            background: var(--stone);
+            padding: 15px;
+            text-align: center;
+            border-bottom: 3px solid var(--blood);
+            position: sticky; top: 0; z-index: 100;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .stat-box {
+            background: rgba(0,0,0,0.4);
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid #333;
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 1.3em;
+            color: var(--gold);
+            font-weight: bold;
+        }
+
+        /* Contenedor Principal */
+        .container { padding: 15px; }
+
+        .mining-section {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid #333;
+            margin-bottom: 20px;
+        }
+
+        /* Botones */
+        .btn {
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn:active { transform: scale(0.98); }
+
+        .btn-claim {
+            background: var(--blood);
+            color: white;
+            padding: 18px;
+            font-size: 1.1em;
+            box-shadow: 0 4px #8a2a1e;
+        }
+
+        .btn-ad {
+            background: #27ae60;
+            color: white;
+            padding: 12px;
+            font-size: 0.9em;
+        }
+
+        /* Tienda de Gladiadores */
+        .shop-title { color: var(--gold); margin: 15px 5px; font-weight: bold; }
+
+        .gladiator-card {
+            background: var(--card);
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #333;
+        }
+
+        .gladiator-info b { display: block; color: var(--gold); }
+        .gladiator-info span { font-size: 0.8em; color: #888; }
+
+        .btn-buy {
+            background: white;
+            color: black;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+
+        .btn-buy:disabled { background: #444; color: #777; }
+
+        .pro-badge {
+            background: var(--gold); color: black;
+            padding: 2px 6px; border-radius: 4px;
+            font-size: 0.6em; vertical-align: middle;
+        }
     </style>
 </head>
 <body>
 
-    <div class="stat-card">
-        <h2>Mi Ludus</h2>
-        <p>Oro: <span id="gold">0</span> 💰</p>
-        <p>Gloria Acumulada: <span id="glory">0</span> ⚔️</p>
-        <p>Producción: <span id="pps">0</span> gloria/seg</p>
-        <button class="claim-btn" onclick="claimGlory()">RECLAMAR GLORIA</button>
+    <div class="header">
+        <strong>ARENA LEGENDS</strong> <span id="pro-tag" style="display:none" class="pro-badge">PRO</span>
+        <div class="stats-grid">
+            <div class="stat-box">ORO 💰 <span id="gold-display" class="stat-value">0</span></div>
+            <div class="stat-box">GLORIA ⚔️ <span id="glory-display" class="stat-value">0</span></div>
+        </div>
     </div>
 
-    <h3>Mercado de Gladiadores</h3>
-    <div class="gladiator-list" id="gladiator-market">
-        <!-- Los gladiadores se generan aquí con JS -->
+    <div class="container">
+        <div class="mining-section">
+            <div style="font-size: 0.8em; color: #888;">Producción en vivo</div>
+            <div style="font-size: 1.4em; font-weight: bold;"><span id="pps-display">0</span> <small style="font-size: 0.6em;">GLORIA/SEG</small></div>
+            <button class="btn btn-claim" onclick="claimGlory()">RECLAMAR ORO</button>
+            <!-- BOTÓN DE VIDEO CON TU ID 25787 -->
+            <button class="btn btn-ad" onclick="showRewardAd()">🎥 VIDEO: +1000 ORO GRATIS</button>
+        </div>
+
+        <div class="shop-title">MERCADO DE ESCLAVOS</div>
+        <div id="market"></div>
+        
+        <div style="margin-top: 30px; text-align: center;">
+            <button onclick="togglePro()" style="background:none; border:none; color:#444; font-size: 0.7em;">
+                Alternar Modo Pro (Debug)
+            </button>
+        </div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Estado inicial del juego
-        let gameState = {
-            gold: 100,
-            accumulatedGlory: 0,
-            gladiatorsOwned: [0, 0, 0], // Cantidad de cada tipo
-            lastUpdate: Date.now()
-        };
+        // TU ID DE ADSGRAM CONFIGURADO
+        const ADSGRAM_BLOCK_ID = "25787"; 
+        const AdController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
 
         const gladiatorTypes = [
-            { id: 0, name: "Esclavo", cost: 50, production: 1 },
-            { id: 1, name: "Reciario", cost: 500, production: 12 },
-            { id: 2, name: "Murmillo", cost: 2500, production: 70 }
+            { id: 0, name: "Esclavo", baseCost: 20, production: 1 },
+            { id: 1, name: "Reciario", baseCost: 150, production: 10 },
+            { id: 2, name: "Secutor", baseCost: 800, production: 55 },
+            { id: 3, name: "Murmillo", baseCost: 4000, production: 210 },
+            { id: 4, name: "Campeón del César", baseCost: 20000, production: 950 }
         ];
 
+        let state = {
+            gold: 100,
+            accumulatedGlory: 0,
+            gladiators: [0, 0, 0, 0, 0],
+            isPro: false,
+            lastSave: Date.now()
+        };
+
+        // Cargar partida guardada en el dispositivo
+        function loadGame() {
+            const saved = localStorage.getItem('gladiator_save_v1');
+            if (saved) {
+                state = JSON.parse(saved);
+                const diff = Math.floor((Date.now() - state.lastSave) / 1000);
+                state.accumulatedGlory += calculatePPS() * diff;
+            }
+            updateUI();
+        }
+
+        function saveGame() {
+            state.lastSave = Date.now();
+            localStorage.setItem('gladiator_save_v1', JSON.stringify(state));
+        }
+
+        function calculatePPS() {
+            let total = 0;
+            gladiatorTypes.forEach(g => {
+                total += state.gladiators[g.id] * g.production;
+            });
+            return state.isPro ? total * 2 : total; // Bonus Pro
+        }
+
         function updateUI() {
-            document.getElementById('gold').innerText = Math.floor(gameState.gold);
-            document.getElementById('glory').innerText = Math.floor(gameState.accumulatedGlory);
-            
-            let totalPPS = 0;
-            gladiatorTypes.forEach(g => {
-                totalPPS += gameState.gladiatorsOwned[g.id] * g.production;
-            });
-            document.getElementById('pps').innerText = totalPPS;
+            document.getElementById('gold-display').innerText = Math.floor(state.gold);
+            document.getElementById('glory-display').innerText = Math.floor(state.accumulatedGlory);
+            document.getElementById('pps-display').innerText = calculatePPS();
+            document.getElementById('pro-tag').style.display = state.isPro ? 'inline-block' : 'none';
 
-            renderMarket();
-        }
+            const market = document.getElementById('market');
+            market.innerHTML = '';
 
-        function renderMarket() {
-            const container = document.getElementById('gladiator-market');
-            container.innerHTML = '';
             gladiatorTypes.forEach(g => {
-                const item = document.createElement('div');
-                item.className = 'gladiator-item';
-                item.innerHTML = `
-                    <div>
-                        <strong>${g.name}</strong> (Posees: ${gameState.gladiatorsOwned[g.id]})<br>
-                        Coste: ${g.cost} 💰 | +${g.production} gloria/s
+                const count = state.gladiators[g.id];
+                const cost = Math.floor(g.baseCost * Math.pow(1.15, count));
+                
+                const card = document.createElement('div');
+                card.className = 'gladiator-card';
+                card.innerHTML = `
+                    <div class="gladiator-info">
+                        <b>${g.name} (x${count})</b>
+                        <span>+${g.production} gloria/seg</span>
                     </div>
-                    <button onclick="buyGladiator(${g.id})" ${gameState.gold < g.cost ? 'disabled' : ''}>COMPRAR</button>
+                    <button class="btn-buy" onclick="buyGladiator(${g.id}, ${cost})" ${state.gold < cost ? 'disabled' : ''}>
+                        ${cost} 💰
+                    </button>
                 `;
-                container.appendChild(item);
+                market.appendChild(card);
             });
         }
 
-        function buyGladiator(id) {
-            if (gameState.gold >= gladiatorTypes[id].cost) {
-                gameState.gold -= gladiatorTypes[id].cost;
-                gameState.gladiatorsOwned[id]++;
+        function buyGladiator(id, cost) {
+            if (state.gold >= cost) {
+                state.gold -= cost;
+                state.gladiators[id]++;
+                tg.HapticFeedback.impactOccurred('medium');
                 updateUI();
+                saveGame();
             }
         }
 
         function claimGlory() {
-            // En Grow Tea, la gloria se convierte en oro al reclamar
-            gameState.gold += gameState.accumulatedGlory;
-            gameState.accumulatedGlory = 0;
-            updateUI();
-            tg.HapticFeedback.notificationOccurred('success');
+            if (state.accumulatedGlory > 1) {
+                state.gold += state.accumulatedGlory;
+                state.accumulatedGlory = 0;
+                tg.HapticFeedback.notificationOccurred('success');
+                updateUI();
+                saveGame();
+            }
         }
 
-        // Bucle principal (se ejecuta cada segundo)
-        setInterval(() => {
-            let totalPPS = 0;
-            gladiatorTypes.forEach(g => {
-                totalPPS += gameState.gladiatorsOwned[g.id] * g.production;
-            });
-            
-            if (totalPPS > 0) {
-                gameState.accumulatedGlory += totalPPS;
+        // FUNCIÓN DE ANUNCIOS ACTUALIZADA CON TU ID
+        function showRewardAd() {
+            if (state.isPro) {
+                state.gold += 1000;
                 updateUI();
+                tg.showAlert("Beneficio PRO: +1000 Oro acreditado sin anuncios.");
+                return;
             }
-        }, 1000);
 
-        // Inicializar
-        updateUI();
+            AdController.show().then((result) => {
+                // Éxito: El usuario vio el video completo
+                state.gold += 1000;
+                saveGame();
+                updateUI();
+                tg.showAlert("¡Felicidades! Has recibido 1000 monedas de oro.");
+                tg.HapticFeedback.notificationOccurred('success');
+            }).catch((result) => {
+                // Error o video cerrado antes de tiempo
+                tg.showAlert("No terminaste de ver el video o hubo un error de conexión.");
+            });
+        }
+
+        function togglePro() {
+            state.isPro = !state.isPro;
+            updateUI();
+            tg.showAlert(state.isPro ? "MODO PRO ACTIVADO (Producción x2 y Sin Anuncios)" : "MODO NORMAL ACTIVADO");
+        }
+
+        // Bucle de producción (cada 100ms para que el contador se vea fluido)
+        setInterval(() => {
+            state.accumulatedGlory += (calculatePPS() / 10);
+            document.getElementById('glory-display').innerText = Math.floor(state.accumulatedGlory);
+        }, 100);
+
+        // Auto-guardado cada 5 segundos
+        setInterval(saveGame, 5000);
+
+        loadGame();
     </script>
 </body>
 </html>
