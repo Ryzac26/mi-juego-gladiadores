@@ -2,168 +2,177 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WoW Gladiators: Black Market</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WoW: Gladiators Arena</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --alliance: #004a93; --horde: #8c1616; --gold: #f1c40f; --bg: #0b0d0f; }
-        body { font-family: 'Arial', sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; text-align: center; }
+        :root { --alliance: #004a93; --horde: #8c1616; --gold: #f1c40f; --bg: #0b0d0f; --green: #2ecc71; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Arial', sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; }
         
-        /* Contenedores */
-        .screen { display: none; height: 100vh; width: 100vw; padding: 10px; box-sizing: border-box; overflow-y: auto; }
-        .active { display: block; }
+        /* Sistema de Pantallas */
+        .screen { display: none; height: 100vh; width: 100vw; padding: 15px; overflow-y: auto; text-align: center; }
+        .active { display: flex; flex-direction: column; }
 
-        /* Stats Bar */
-        .stats-bar { background: #1a1c23; border-bottom: 2px solid #333; padding: 10px; display: flex; justify-content: space-around; font-weight: bold; font-size: 14px; }
+        /* HUD Superior */
+        .hud { background: #1a1c23; padding: 10px; display: flex; justify-content: space-around; border-bottom: 2px solid #333; font-size: 14px; font-weight: bold; }
         .gold-txt { color: var(--gold); }
 
-        /* Grid de Razas e Items */
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-bottom: 80px; }
-        .card { background: #23272a; border: 2px solid #444; border-radius: 8px; padding: 10px; cursor: pointer; position: relative; }
-        .card:hover { border-color: var(--gold); }
+        /* Estilo de Cartas (Razas/Items) */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; padding-bottom: 50px; }
+        .card { background: #23272a; border: 2px solid #444; border-radius: 10px; padding: 12px; cursor: pointer; transition: 0.2s; position: relative; }
+        .card:active { transform: scale(0.95); border-color: var(--gold); }
         .card h3 { margin: 5px 0; font-size: 14px; }
-        .card p { font-size: 10px; color: #aaa; margin: 0; }
+        .card p { font-size: 10px; color: #aaa; margin: 5px 0; }
         .price { color: var(--gold); font-weight: bold; font-size: 12px; }
 
         /* Arena y Animaciones */
-        .arena { height: 180px; background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://i.imgur.com/3n7S7X8.jpeg') center/cover; position: relative; display: flex; justify-content: space-around; align-items: flex-end; padding-bottom: 20px; border-radius: 10px; margin: 10px 0; }
-        .gladiator { width: 70px; height: 70px; position: relative; }
-        .visual { font-size: 50px; filter: drop-shadow(2px 4px 6px black); }
-        .weapon-icon { position: absolute; bottom: 0; right: 0; font-size: 25px; }
+        .arena { height: 220px; background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://i.imgur.com/3n7S7X8.jpeg') center/cover; border-radius: 15px; display: flex; justify-content: space-around; align-items: flex-end; padding-bottom: 30px; margin: 15px 0; position: relative; }
+        .gladiator { width: 80px; position: relative; transition: 0.2s; }
+        .visual { font-size: 55px; filter: drop-shadow(2px 4px 6px black); }
+        .weapon-ico { position: absolute; bottom: 0; right: -5px; font-size: 25px; }
 
-        /* Animaciones */
-        @keyframes idle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-        .anim-idle { animation: idle 2s infinite ease-in-out; }
-        @keyframes attackR { 0% { transform: translateX(0); } 50% { transform: translateX(100px) scale(1.2); } 100% { transform: translateX(0); } }
-        .anim-attack-r { animation: attackR 0.4s; }
-        @keyframes attackL { 0% { transform: translateX(0); } 50% { transform: translateX(-100px) scale(1.2); } 100% { transform: translateX(0); } }
-        .anim-attack-l { animation: attackL 0.4s; }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        /* Animaciones CSS */
+        @keyframes idle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        .anim-idle { animation: idle 2.5s infinite ease-in-out; }
+        @keyframes atkR { 0% { transform: translateX(0); } 50% { transform: translateX(80px) scale(1.2); } 100% { transform: translateX(0); } }
+        .anim-atk-r { animation: atkR 0.4s; }
+        @keyframes atkL { 0% { transform: translateX(0); } 50% { transform: translateX(-80px) scale(1.2); } 100% { transform: translateX(0); } }
+        .anim-atk-l { animation: atkL 0.4s; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 60% { transform: translateX(8px); } }
         .anim-shake { animation: shake 0.2s; }
 
-        /* Botones Flotantes */
-        .nav-buttons { position: fixed; bottom: 10px; left: 0; width: 100%; display: flex; justify-content: center; gap: 10px; }
-        .btn-nav { background: #333; color: white; border: 1px solid #555; padding: 10px; border-radius: 5px; width: 30%; font-size: 12px; }
-        .btn-main { background: var(--gold); color: black; font-weight: bold; }
+        /* Barras de Vida */
+        .hp-cont { width: 100%; height: 8px; background: #444; border-radius: 4px; margin-bottom: 5px; border: 1px solid #000; }
+        .hp-bar { height: 100%; background: var(--green); width: 100%; transition: 0.4s; }
 
-        /* UI HP */
-        .hp-bar { width: 80px; height: 6px; background: #444; border-radius: 3px; margin-bottom: 5px; }
-        .hp-fill { height: 100%; background: #2ecc71; width: 100%; transition: 0.3s; }
-        .log { background: rgba(0,0,0,0.9); height: 60px; overflow-y: auto; font-size: 10px; padding: 8px; border-radius: 5px; text-align: left; margin: 5px; border: 1px solid #333; }
+        /* Botones y Navegación */
+        .btn { background: var(--gold); color: black; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin: 10px 0; }
+        .nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #1a1c23; display: flex; padding: 10px; gap: 10px; border-top: 2px solid #333; }
+        .btn-s { background: #333; color: white; flex: 1; padding: 10px; font-size: 12px; }
+
+        .log { background: rgba(0,0,0,0.8); height: 80px; overflow-y: auto; font-size: 11px; padding: 10px; border-radius: 10px; text-align: left; border: 1px solid #444; }
+        .potion-badge { background: #e74c3c; color: white; padding: 2px 6px; border-radius: 10px; position: absolute; top: -5px; right: -5px; font-size: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="stats-bar">
+    <div class="hud">
         <span class="gold-txt">💰 <span id="gold-val">0</span></span>
         <span>⚔️ ATK: <span id="atk-val">0</span></span>
-        <span id="race-tag">Cargando...</span>
+        <span>🧪 <span id="pot-val">0</span></span>
     </div>
 
-    <!-- SELECCIÓN DE RAZA -->
-    <div id="screen-race" class="screen active">
-        <h2>Elige tu Raza de WoW</h2>
+    <!-- PANTALLA: SELECCIÓN ÚNICA DE RAZA -->
+    <div id="sc-race" class="screen">
+        <h2>Elige tu Raza</h2>
+        <p>Esta decisión será permanente</p>
         <div class="grid" id="race-list"></div>
     </div>
 
-    <!-- LOBBY -->
-    <div id="screen-lobby" class="screen">
-        <h2 id="welcome-user">¡Héroe!</h2>
-        <div class="gladiator anim-idle" style="margin: 30px auto; font-size: 80px; position: relative; width: 100px;">
-            <span id="lobby-visual">🛡️</span>
-            <span id="lobby-weapon" class="weapon-icon"></span>
+    <!-- PANTALLA: LOBBY -->
+    <div id="sc-lobby" class="screen">
+        <h2 id="user-name">Héroe</h2>
+        <div class="gladiator anim-idle" style="margin: 40px auto; width: 100px;">
+            <div id="lobby-vis" class="visual">🛡️</div>
+            <div id="lobby-weap" class="weapon-ico"></div>
         </div>
-        <button class="btn-nav btn-main" style="width: 80%; font-size: 18px;" onclick="startBattle()">⚔️ ENTRAR A LA ARENA</button>
-        
-        <div class="nav-buttons">
-            <button class="btn-nav" onclick="showScreen('screen-lobby')">🏠 Inicio</button>
-            <button class="btn-nav" onclick="showScreen('screen-market')">🛒 Mercado</button>
+        <button class="btn" onclick="startBattle()" style="font-size: 18px;">⚔️ PELEAR</button>
+        <div class="nav">
+            <button class="btn-s" onclick="showScreen('sc-lobby')">Inicio</button>
+            <button class="btn-s" onclick="showScreen('sc-market')">Mercado</button>
         </div>
     </div>
 
-    <!-- MERCADO -->
-    <div id="screen-market" class="screen">
+    <!-- PANTALLA: MERCADO -->
+    <div id="sc-market" class="screen">
         <h2>Mercado Negro</h2>
-        <p>Mejora tu daño con oro de tus victorias</p>
         <div class="grid" id="market-list"></div>
-        <div class="nav-buttons">
-            <button class="btn-nav" onclick="showScreen('screen-lobby')">🏠 Volver</button>
+        <div class="nav">
+            <button class="btn-s" onclick="showScreen('sc-lobby')">Cerrar</button>
         </div>
     </div>
 
-    <!-- COMBATE -->
-    <div id="screen-combat" class="screen">
+    <!-- PANTALLA: COMBATE -->
+    <div id="sc-combat" class="screen">
         <div class="arena">
             <div>
-                <div class="hp-bar"><div id="hp-p" class="hp-fill"></div></div>
-                <div id="sprite-p" class="gladiator anim-idle"></div>
+                <div class="hp-cont"><div id="hp-p" class="hp-bar"></div></div>
+                <div id="spr-p" class="gladiator anim-idle"></div>
             </div>
             <div>
-                <div class="hp-bar"><div id="hp-e" class="hp-fill"></div></div>
-                <div id="sprite-e" class="gladiator anim-idle">👹</div>
+                <div class="hp-cont"><div id="hp-e" class="hp-bar"></div></div>
+                <div id="spr-e" class="gladiator anim-idle">👹</div>
             </div>
         </div>
         <div id="combat-log" class="log">Buscando oponente...</div>
+        <button id="btn-heal" class="btn" onclick="usePotion()" style="background: #e74c3c; color: white;">🧪 USAR POCIÓN</button>
     </div>
 
     <script>
         const tele = window.Telegram.WebApp;
         tele.expand();
 
+        // 1. CONFIGURACIÓN SUPABASE
         const SUPABASE_URL = 'TU_URL_DE_SUPABASE';
         const SUPABASE_KEY = 'TU_KEY_DE_SUPABASE';
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // 2. DATOS DEL JUEGO
         const RAZAS = {
-            human: { n: "Humano", e: "👨", hp: 100, atk: 15, gold: 1.2, dodge: 0.05, f: "ali" },
-            orc: { n: "Orco", e: "🟢", hp: 130, atk: 18, gold: 1.0, dodge: 0.03, f: "hor" },
-            dwarf: { n: "Enano", e: "🧔", hp: 150, atk: 12, gold: 1.0, dodge: 0.02, f: "ali" },
-            undead: { n: "No-Muerto", e: "💀", hp: 90, atk: 16, gold: 1.0, dodge: 0.08, f: "hor" },
-            elf: { n: "Elfo Noche", e: "🧝", hp: 85, atk: 14, gold: 1.0, dodge: 0.18, f: "ali" },
-            tauren: { n: "Tauren", e: "🐂", hp: 180, atk: 10, gold: 1.0, dodge: 0.01, f: "hor" },
-            bloodelf: { n: "Elfo Sangre", e: "💅", hp: 95, atk: 17, gold: 1.0, dodge: 0.06, f: "hor" },
-            gnome: { n: "Gnomo", e: "👶", hp: 70, atk: 13, gold: 1.1, dodge: 0.12, f: "ali" },
-            troll: { n: "Troll", e: "🎋", hp: 110, atk: 19, gold: 1.0, dodge: 0.05, f: "hor" },
-            draenei: { n: "Draenei", e: "🐐", hp: 120, atk: 14, gold: 1.0, dodge: 0.05, f: "ali" },
-            worgen: { n: "Worgen", e: "🐺", hp: 110, atk: 20, gold: 1.0, dodge: 0.07, f: "ali" },
-            goblin: { n: "Goblin", e: "👺", hp: 80, atk: 14, gold: 1.5, dodge: 0.10, f: "hor" },
-            panda: { n: "Pandaren", e: "🐼", hp: 140, atk: 13, gold: 1.1, dodge: 0.05, f: "neu" }
+            human: { n: "Humano", e: "👨", hp: 100, atk: 15, gold: 1.2, dodge: 0.05 },
+            orc: { n: "Orco", e: "🟢", hp: 140, atk: 18, gold: 1.0, dodge: 0.03 },
+            elf: { n: "Elfo Noche", e: "🧝", hp: 90, atk: 14, gold: 1.0, dodge: 0.18 },
+            undead: { n: "No-Muerto", e: "💀", hp: 95, atk: 16, gold: 1.0, dodge: 0.08 },
+            tauren: { n: "Tauren", e: "🐂", hp: 180, atk: 11, gold: 1.0, dodge: 0.01 },
+            goblin: { n: "Goblin", e: "👺", hp: 80, atk: 14, gold: 1.6, dodge: 0.08 }
         };
 
-        const ITEMS = [
-            { id: "dagger", n: "Daga Oxidada", e: "🔪", atk: 5, p: 100 },
-            { id: "sword", n: "Espada de Acero", e: "⚔️", atk: 15, p: 500 },
-            { id: "axe", n: "Hacha de Guerra", e: "🪓", atk: 35, p: 1500 },
-            { id: "staff", n: "Báculo Arcano", e: "🪄", atk: 70, p: 4000 },
-            { id: "frost", n: "Frostmourne", e: "❄️", atk: 150, p: 10000 }
-        ];
+        const MARKET = {
+            weapons: [
+                { id: "sword1", n: "Daga", e: "🔪", atk: 10, p: 150 },
+                { id: "sword2", n: "Hacha", e: "🪓", atk: 30, p: 600 },
+                { id: "sword3", n: "Frostmourne", e: "❄️", atk: 120, p: 5000 }
+            ],
+            potions: { n: "Poción Roja", e: "🧪", heal: 50, p: 50 }
+        };
 
-        let pData = { id: "", gold: 0, race: "", weapon: null };
-        let currentP = { hp: 100, max: 100, atkTotal: 10, raceObj: null };
-        let currentE = { hp: 100, max: 100, atk: 10 };
+        let pData = { id: "", gold: 0, race: "", weapon: null, potions: 0, lvl: 1 };
+        let battle = { p_hp: 0, p_max: 0, e_hp: 0, e_max: 0, active: false };
 
+        // 3. INICIALIZACIÓN
         window.onload = async () => {
-            const user = tele.initDataUnsafe.user || { id: "dev_user", first_name: "Gladiador" };
+            const user = tele.initDataUnsafe.user || { id: "dev_test", first_name: "Admin" };
             pData.id = user.id.toString();
+            document.getElementById('user-name').innerText = user.first_name;
 
-            let { data } = await supabase.from('players').select('*').eq('id', pData.id).single();
+            let { data } = await supabase.from('players').select('*').eq('id', pData.id);
             
-            if (data && data.race) {
-                pData = data;
-                initGame();
+            if (data && data.length > 0) {
+                pData = data[0];
+                if (pData.race) {
+                    initLobby();
+                } else {
+                    showScreen('sc-race');
+                    renderRaceSelection();
+                }
             } else {
+                // Crear nuevo perfil
+                await supabase.from('players').insert([{ id: pData.id, name: user.first_name, gold: 0, potions: 0 }]);
+                showScreen('sc-race');
                 renderRaceSelection();
             }
         };
 
         function renderRaceSelection() {
             const list = document.getElementById('race-list');
+            list.innerHTML = "";
             for (let key in RAZAS) {
                 const r = RAZAS[key];
                 const card = document.createElement('div');
-                card.className = `card`;
-                card.innerHTML = `<h3>${r.e} ${r.n}</h3><p>Atk: ${r.atk} | HP: ${r.hp}</p>`;
+                card.className = "card";
+                card.innerHTML = `<h3>${r.e} ${r.n}</h3><p>HP: ${r.hp} | ATK: ${r.atk}</p>`;
                 card.onclick = () => selectRace(key);
                 list.appendChild(card);
             }
@@ -171,143 +180,168 @@
 
         async function selectRace(key) {
             pData.race = key;
-            pData.gold = 0;
-            await supabase.from('players').upsert([pData]);
-            initGame();
+            await supabase.from('players').update({ race: key }).eq('id', pData.id);
+            initLobby();
         }
 
-        function initGame() {
+        function initLobby() {
             const r = RAZAS[pData.race];
-            currentP.raceObj = r;
-            
-            // Calcular ATK TOTAL
             let weaponAtk = 0;
             if (pData.weapon) {
-                const w = ITEMS.find(i => i.id === pData.weapon);
+                const w = MARKET.weapons.find(i => i.id === pData.weapon);
                 weaponAtk = w.atk;
-                document.getElementById('lobby-weapon').innerText = w.e;
-                document.getElementById('sprite-p').innerHTML = `${r.e}<span class="weapon-icon" style="font-size:25px">${w.e}</span>`;
+                document.getElementById('lobby-weap').innerText = w.e;
+                document.getElementById('spr-p').innerHTML = `<div class="visual">${r.e}</div><div class="weapon-ico">${w.e}</div>`;
             } else {
-                document.getElementById('sprite-p').innerText = r.e;
+                document.getElementById('spr-p').innerHTML = `<div class="visual">${r.e}</div>`;
             }
-
-            currentP.atkTotal = r.atk + weaponAtk;
-            currentP.max = r.hp;
-
-            document.getElementById('lobby-visual').innerText = r.e;
-            document.getElementById('race-tag').innerText = r.n;
-            updateUI();
+            
+            pData.totalAtk = r.atk + weaponAtk;
+            document.getElementById('lobby-vis').innerText = r.e;
+            updateHUD();
             renderMarket();
-            showScreen('screen-lobby');
+            showScreen('sc-lobby');
         }
 
         function renderMarket() {
             const list = document.getElementById('market-list');
-            list.innerHTML = "";
-            ITEMS.forEach(item => {
+            list.innerHTML = `<h3>Armas</h3>`;
+            MARKET.weapons.forEach(w => {
                 const card = document.createElement('div');
                 card.className = "card";
-                const isOwned = pData.weapon === item.id;
-                card.innerHTML = `
-                    <h3>${item.e} ${item.n}</h3>
-                    <p>+${item.atk} Daño</p>
-                    <div class="price">${isOwned ? "EQUIPADO" : "💰 " + item.p}</div>
-                `;
-                card.onclick = () => buyItem(item);
+                card.innerHTML = `<h3>${w.e} ${w.n}</h3><p>+${w.atk} ATK</p><div class="price">${pData.weapon === w.id ? 'EQUIPADO' : '💰 '+w.p}</div>`;
+                card.onclick = () => buyWeapon(w);
                 list.appendChild(card);
             });
+            list.innerHTML += `<h3 style="grid-column: 1/3">Consumibles</h3>`;
+            const pot = MARKET.potions;
+            const pCard = document.createElement('div');
+            pCard.className = "card";
+            pCard.innerHTML = `<h3>${pot.e} ${pot.n}</h3><p>Cura ${pot.heal} HP</p><div class="price">💰 ${pot.p}</div>`;
+            pCard.onclick = () => buyPotion();
+            list.appendChild(pCard);
         }
 
-        async function buyItem(item) {
-            if (pData.weapon === item.id) return alert("Ya tienes esta arma.");
-            if (pData.gold < item.p) return alert("No tienes suficiente oro.");
-
-            pData.gold -= item.p;
-            pData.weapon = item.id;
-            
-            await supabase.from('players').update(pData).eq('id', pData.id);
-            initGame();
-            alert("¡Has comprado: " + item.n + "!");
+        async function buyWeapon(w) {
+            if (pData.gold >= w.p && pData.weapon !== w.id) {
+                pData.gold -= w.p;
+                pData.weapon = w.id;
+                await save();
+                initLobby();
+            }
         }
 
-        // LÓGICA DE COMBATE
+        async function buyPotion() {
+            if (pData.gold >= MARKET.potions.p) {
+                pData.gold -= MARKET.potions.p;
+                pData.potions++;
+                await save();
+                updateHUD();
+                renderMarket();
+            }
+        }
+
+        // 4. COMBATE
         function startBattle() {
-            showScreen('screen-combat');
-            currentP.hp = currentP.max;
-            currentE.max = 50 + (Math.random() * 100);
-            currentE.hp = currentE.max;
-            currentE.atk = 10 + (Math.random() * 10);
+            const r = RAZAS[pData.race];
+            battle.p_max = r.hp;
+            battle.p_hp = r.hp;
+            battle.e_max = 60 + (pData.lvl * 15);
+            battle.e_hp = battle.e_max;
+            battle.active = true;
+            
+            showScreen('sc-combat');
             updateHP();
-            setTimeout(battleLoop, 1000);
+            log("¡Un enemigo aparece!");
+            setTimeout(battleTurn, 1000);
         }
 
-        async function battleLoop() {
-            if (currentP.hp <= 0 || currentE.hp <= 0) return resolveBattle();
+        async function battleTurn() {
+            if (!battle.active) return;
 
-            // Ataca Jugador
-            await animate('sprite-p', 'anim-attack-r');
-            currentE.hp -= currentP.atkTotal;
-            hitEffect('sprite-e');
-            log(`Atacas con fuerza: -${currentP.atkTotal}`);
+            // Turno Jugador
+            await animate('spr-p', 'anim-atk-r');
+            battle.e_hp -= pData.totalAtk;
+            hitEffect('spr-e');
+            log(`Atacas con fuerza: -${pData.totalAtk}`);
             updateHP();
 
-            if (currentE.hp <= 0) return resolveBattle();
+            if (battle.e_hp <= 0) return endBattle(true);
 
-            // Ataca Enemigo
+            // Turno Enemigo
             setTimeout(async () => {
-                await animate('sprite-e', 'anim-attack-l');
-                if (Math.random() > currentP.raceObj.dodge) {
-                    currentP.hp -= currentE.atk;
-                    hitEffect('sprite-p');
-                    log(`Enemigo te golpea: -${currentE.atk}`);
-                } else log("¡Esquivaste el golpe!");
-                
+                await animate('spr-e', 'anim-atk-l');
+                const dmg = 8 + (pData.lvl * 3);
+                battle.p_hp -= dmg;
+                hitEffect('spr-p');
+                log(`Enemigo golpea: -${dmg}`);
                 updateHP();
-                if (currentP.hp <= 0) return resolveBattle();
-                setTimeout(battleLoop, 1000);
+
+                if (battle.p_hp <= 0) return endBattle(false);
+                setTimeout(battleTurn, 1200);
             }, 800);
         }
 
-        async function resolveBattle() {
-            if (currentP.hp > 0) {
-                let win = Math.floor(40 * currentP.raceObj.gold);
-                pData.gold += win;
-                log(`<span style="color:gold">GANASTE: +${win} oro</span>`);
-            } else {
-                log("<span style='color:red'>DERROTA...</span>");
+        function usePotion() {
+            if (pData.potions > 0 && battle.active) {
+                pData.potions--;
+                battle.p_hp = Math.min(battle.p_max, battle.p_hp + MARKET.potions.heal);
+                updateHP();
+                updateHUD();
+                log("🧪 ¡Usaste una poción! +50 HP");
+                save();
             }
-            updateUI();
-            await supabase.from('players').update(pData).eq('id', pData.id);
-            setTimeout(() => showScreen('screen-lobby'), 2500);
         }
 
-        // HELPERS
+        async function endBattle(win) {
+            battle.active = false;
+            if (win) {
+                const reward = Math.floor(40 * RAZAS[pData.race].gold);
+                pData.gold += reward;
+                pData.lvl++;
+                log(`<span style="color:var(--gold)">¡VICTORIA! +${reward} Oro</span>`);
+            } else {
+                log("<span style='color:red'>HAS CAÍDO...</span>");
+                document.getElementById('spr-p').style.opacity = "0.5";
+            }
+            await save();
+            setTimeout(() => {
+                document.getElementById('spr-p').style.opacity = "1";
+                initLobby();
+            }, 2500);
+        }
+
+        // 5. UTILIDADES
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(id).classList.add('active');
         }
-        function updateUI() {
-            document.getElementById('gold-val').innerText = Math.floor(pData.gold);
-            document.getElementById('atk-val').innerText = currentP.atkTotal;
+        function updateHUD() {
+            document.getElementById('gold-val').innerText = pData.gold;
+            document.getElementById('atk-val').innerText = pData.totalAtk;
+            document.getElementById('pot-val').innerText = pData.potions;
         }
         function updateHP() {
-            document.getElementById('hp-p').style.width = (currentP.hp / currentP.max * 100) + "%";
-            document.getElementById('hp-e').style.width = (currentE.hp / currentE.max * 100) + "%";
+            document.getElementById('hp-p').style.width = (battle.p_hp / battle.p_max * 100) + "%";
+            document.getElementById('hp-e').style.width = (battle.e_hp / battle.e_max * 100) + "%";
         }
         function log(m) {
             const l = document.getElementById('combat-log');
-            l.innerHTML += "<br>> " + m;
+            l.innerHTML += `<br>> ${m}`;
             l.scrollTop = l.scrollHeight;
         }
-        async function animate(id, className) {
+        async function animate(id, cl) {
             const el = document.getElementById(id);
-            el.classList.add(className);
-            return new Promise(r => setTimeout(() => { el.classList.remove(className); r(); }, 400));
+            el.classList.add(cl);
+            return new Promise(r => setTimeout(() => { el.classList.remove(cl); r(); }, 400));
         }
         function hitEffect(id) {
             const el = document.getElementById(id);
             el.classList.add('anim-shake');
             setTimeout(() => el.classList.remove('anim-shake'), 200);
+        }
+        async function save() {
+            await supabase.from('players').update(pData).eq('id', pData.id);
         }
     </script>
 </body>
