@@ -3,91 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gladiadores: Humanos vs No-Muertos</title>
+    <title>Gladiadores: Arena</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --gold: #f1c40f; --bg: #0b0d0f; --green: #2ecc71; --red: #e74c3c; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Arial', sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; }
+        :root { --gold: #f1c40f; --bg: #0b0d0f; --green: #2ecc71; --red: #e74c3c; --card: #1c1f24; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; }
         
+        /* Contenedores de Pantalla */
         .screen { display: none; height: 100vh; width: 100vw; padding: 20px; flex-direction: column; align-items: center; text-align: center; overflow-y: auto; }
         .active { display: flex !important; }
 
-        #hud { background: #1a1c23; padding: 10px; display: none; justify-content: space-around; border-bottom: 2px solid #333; font-size: 14px; width: 100%; position: fixed; top: 0; z-index: 100; }
+        /* HUD Superior */
+        #hud { background: #16191d; padding: 12px; display: none; justify-content: space-around; border-bottom: 1px solid #333; font-size: 14px; width: 100%; position: fixed; top: 0; z-index: 100; }
         .gold-txt { color: var(--gold); font-weight: bold; }
 
+        /* Tarjetas de Selección y Mercado */
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; margin-top: 20px; padding-bottom: 100px; }
-        .card { background: #23272a; border: 2px solid #444; border-radius: 12px; padding: 20px; cursor: pointer; transition: 0.2s; }
-        .card:active { transform: scale(0.95); border-color: var(--gold); }
-        .card h3 { margin: 10px 0; font-size: 18px; }
-        .card p { font-size: 12px; color: #bbb; margin: 5px 0; }
+        .card { background: var(--card); border: 1px solid #333; border-radius: 12px; padding: 20px; cursor: pointer; transition: 0.2s; }
+        .card:active { transform: scale(0.96); background: #252a31; border-color: var(--gold); }
+        .card h3 { margin: 10px 0; font-size: 18px; color: var(--gold); }
+        .card p { font-size: 12px; color: #999; margin: 5px 0; line-height: 1.4; }
 
-        .arena { height: 200px; width: 100%; background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://i.imgur.com/3n7S7X8.jpeg') center/cover; border-radius: 15px; display: flex; justify-content: space-around; align-items: flex-end; padding-bottom: 20px; margin-top: 50px; position: relative; }
+        /* Zona de Combate */
+        .arena { height: 220px; width: 100%; background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://i.imgur.com/3n7S7X8.jpeg') center/cover; border-radius: 15px; display: flex; justify-content: space-around; align-items: flex-end; padding-bottom: 30px; margin-top: 50px; position: relative; border: 1px solid #333; }
         .gladiator { width: 80px; position: relative; }
-        .visual { font-size: 65px; filter: drop-shadow(2px 4px 6px black); }
-        .weapon-ico { position: absolute; bottom: 0; right: -10px; font-size: 25px; }
+        .visual { font-size: 65px; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.8)); }
+        .weapon-ico { position: absolute; bottom: 5px; right: -15px; font-size: 28px; }
 
+        /* Animaciones */
         @keyframes idle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .anim-idle { animation: idle 2s infinite ease-in-out; }
-        @keyframes atkR { 0% { transform: translateX(0); } 50% { transform: translateX(60px); } 100% { transform: translateX(0); } }
+        .anim-idle { animation: idle 2.5s infinite ease-in-out; }
+        @keyframes atkR { 0% { transform: translateX(0); } 50% { transform: translateX(60px) scale(1.1); } 100% { transform: translateX(0); } }
         .anim-atk-r { animation: atkR 0.4s; }
-        @keyframes atkL { 0% { transform: translateX(0); } 50% { transform: translateX(-60px); } 100% { transform: translateX(0); } }
+        @keyframes atkL { 0% { transform: translateX(0); } 50% { transform: translateX(-60px) scale(1.1); } 100% { transform: translateX(0); } }
         .anim-atk-l { animation: atkL 0.4s; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
         .shake { animation: shake 0.2s; }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 
-        .hp-cont { width: 100%; height: 8px; background: #444; border-radius: 4px; margin-bottom: 5px; overflow: hidden; }
-        .hp-bar { height: 100%; background: var(--green); width: 100%; transition: 0.3s; }
+        /* Interfaz de Vida */
+        .hp-cont { width: 100%; height: 6px; background: #333; border-radius: 3px; margin-bottom: 8px; overflow: hidden; }
+        .hp-bar { height: 100%; background: var(--green); width: 100%; transition: 0.3s ease; }
 
-        .btn { background: var(--gold); color: black; border: none; padding: 15px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; margin: 10px 0; }
-        .nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #1a1c23; display: flex; padding: 15px; gap: 10px; border-top: 2px solid #333; }
-        .btn-s { background: #333; color: white; flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #444; }
+        /* Botones Principales */
+        .btn { background: var(--gold); color: black; border: none; padding: 16px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; margin: 10px 0; font-size: 16px; text-transform: uppercase; }
+        .btn:active { transform: scale(0.98); opacity: 0.9; }
+        .nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #16191d; display: flex; padding: 15px; gap: 10px; border-top: 1px solid #333; }
+        .btn-s { background: #252a31; color: white; flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #444; font-size: 13px; font-weight: 600; }
 
-        .log { background: rgba(0,0,0,0.8); height: 100px; width: 100%; overflow-y: auto; font-size: 12px; padding: 10px; border-radius: 10px; text-align: left; margin-top: 10px; border: 1px solid #333; }
-        #loading-screen { display: flex; justify-content: center; align-items: center; height: 100vh; font-weight: bold; letter-spacing: 2px; }
+        /* Bitácora de Combate */
+        .log { background: rgba(0,0,0,0.85); height: 110px; width: 100%; overflow-y: auto; font-size: 12px; padding: 12px; border-radius: 10px; text-align: left; margin-top: 15px; border: 1px solid #333; color: #ccc; line-height: 1.5; }
     </style>
 </head>
 <body>
 
-    <div id="loading-screen">
-        <p>CARGANDO ARENA...</p>
-    </div>
-
+    <!-- HUD -->
     <div id="hud">
         <span class="gold-txt">💰 <span id="gold-val">0</span></span>
         <span>⚔️ <span id="atk-val">0</span></span>
         <span>🧪 <span id="pot-val">0</span></span>
     </div>
 
-    <!-- SELECCIÓN DE RAZA -->
+    <!-- SELECCIÓN INICIAL -->
     <div id="sc-race" class="screen">
-        <h1 style="color: var(--gold); margin-top: 40px;">Elige tu Bando</h1>
-        <p>Humanos vs No-Muertos</p>
+        <h1 style="margin-top: 50px; font-size: 28px;">Elige tu Bando</h1>
+        <p style="color: #888;">Selecciona tu raza para empezar la batalla</p>
         <div class="grid" id="race-list"></div>
     </div>
 
-    <!-- MENÚ PRINCIPAL -->
+    <!-- LOBBY -->
     <div id="sc-lobby" class="screen">
-        <h2 id="user-name" style="margin-top: 60px;">Héroe</h2>
+        <h2 id="user-name" style="margin-top: 70px; letter-spacing: 1px;">GLADIADOR</h2>
         <div class="gladiator anim-idle" style="margin: 40px auto; width: 120px;">
             <div id="lobby-vis" class="visual">👤</div>
             <div id="lobby-weap" class="weapon-ico"></div>
         </div>
-        <button class="btn" onclick="startBattle()" style="font-size: 20px;">⚔️ PELEAR EN LA ARENA</button>
-        
+        <button class="btn" onclick="startBattle()">ENTRAR A LA ARENA</button>
         <div class="nav">
-            <button class="btn-s" onclick="showScreen('sc-lobby')">Lobby</button>
-            <button class="btn-s" onclick="showScreen('sc-market')">Mercado</button>
+            <button class="btn-s" onclick="showScreen('sc-lobby')">INICIO</button>
+            <button class="btn-s" onclick="showScreen('sc-market')">MERCADO</button>
         </div>
     </div>
 
     <!-- MERCADO -->
     <div id="sc-market" class="screen">
-        <h2 style="margin-top: 60px;">Mercado Negro</h2>
+        <h2 style="margin-top: 70px;">Mercado</h2>
         <div class="grid" id="market-list"></div>
         <div class="nav">
-            <button class="btn-s" onclick="showScreen('sc-lobby')">Volver</button>
+            <button class="btn-s" onclick="showScreen('sc-lobby')">VOLVER</button>
         </div>
     </div>
 
@@ -111,44 +115,37 @@
         const tele = window.Telegram.WebApp;
         tele.expand();
 
-        // CREDENCIALES SUPABASE
+        // CREDENCIALES
         const SUPABASE_URL = 'https://mfortldgznwotnekaswh.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mb3J0bGRnem53b3RuZWthc3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxODc2NzIsImV4cCI6MjA5MDc2MzY3Mn0.EkKBnYUkiDZ3vCr8vqMScowuvYKvhuo3m9qfPsQzab4';
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const RAZAS = {
-            human: { n: "Humano", e: "👨", hp: 110, atk: 16, gold: 1.3, dodge: 0.05, desc: "+30% Ganancia de Oro" },
-            undead: { n: "No-Muerto", e: "💀", hp: 95, atk: 20, gold: 1.0, dodge: 0.15, desc: "+15% Probabilidad Esquivar" }
+            human: { n: "Humano", e: "👨", hp: 115, atk: 15, gold: 1.3, dodge: 0.05, desc: "Bono: +30% de Oro" },
+            undead: { n: "No-Muerto", e: "💀", hp: 100, atk: 19, gold: 1.0, dodge: 0.15, desc: "Bono: +15% Esquiva" }
         };
 
         const MARKET_WEAPONS = [
-            { id: "w1", n: "Daga Lenta", e: "🔪", atk: 12, p: 100 },
-            { id: "w2", n: "Espada de Acero", e: "⚔️", atk: 35, p: 650 },
-            { id: "w3", n: "Segadora de Almas", e: "🗡️", atk: 110, p: 4000 }
+            { id: "w1", n: "Daga", e: "🔪", atk: 12, p: 100 },
+            { id: "w2", n: "Espada", e: "⚔️", atk: 38, p: 600 },
+            { id: "w3", n: "Segadora", e: "🗡️", atk: 115, p: 4500 }
         ];
 
         let pData = { id: "", gold: 0, race: "", weapon: null, potions: 1, lvl: 1 };
         let b = { p_hp: 0, p_max: 0, e_hp: 0, e_max: 0, active: false };
 
         window.onload = async () => {
-            try {
-                const user = tele.initDataUnsafe.user || { id: "dev_user", first_name: "Gladiador" };
-                pData.id = user.id.toString();
-                document.getElementById('user-name').innerText = user.first_name;
+            const user = tele.initDataUnsafe.user || { id: "dev_player", first_name: "Gladiador" };
+            pData.id = user.id.toString();
+            document.getElementById('user-name').innerText = user.first_name.toUpperCase();
 
-                let { data } = await supabase.from('players').select('*').eq('id', pData.id).maybeSingle();
-                
-                document.getElementById('loading-screen').style.display = 'none';
-
-                if (data && data.race) {
-                    pData = data;
-                    initLobby();
-                } else {
-                    showScreen('sc-race');
-                    renderRaceSelection();
-                }
-            } catch (e) {
-                document.getElementById('loading-screen').style.display = 'none';
+            // Consultar DB
+            let { data } = await supabase.from('players').select('*').eq('id', pData.id).maybeSingle();
+            
+            if (data && data.race) {
+                pData = data;
+                initLobby();
+            } else {
                 showScreen('sc-race');
                 renderRaceSelection();
             }
@@ -200,7 +197,7 @@
 
         function renderMarket() {
             const list = document.getElementById('market-list');
-            list.innerHTML = `<h3 style="grid-column: 1/3; margin-top:10px;">Armas</h3>`;
+            list.innerHTML = `<h4 style="grid-column: 1/3; margin:10px 0;">Armamento</h4>`;
             MARKET_WEAPONS.forEach(w => {
                 const card = document.createElement('div');
                 card.className = "card";
@@ -208,10 +205,10 @@
                 card.onclick = () => buyWeapon(w);
                 list.appendChild(card);
             });
-            list.innerHTML += `<h3 style="grid-column: 1/3; margin-top:10px;">Consumibles</h3>`;
+            list.innerHTML += `<h4 style="grid-column: 1/3; margin:20px 0 10px;">Consumibles</h4>`;
             const pCard = document.createElement('div');
             pCard.className = "card";
-            pCard.innerHTML = `<h3>🧪 Poción Roja</h3><p>Cura 50 HP</p><div class="price">💰 40</div>`;
+            pCard.innerHTML = `<h3>🧪 Poción</h3><p>Cura 50 HP</p><div class="price">💰 40</div>`;
             pCard.onclick = () => buyPotion();
             list.appendChild(pCard);
         }
@@ -244,29 +241,29 @@
             
             showScreen('sc-combat');
             updateHP();
-            log("¡Un rival sediento de sangre aparece!");
+            log("Un oponente entra en la arena...");
             setTimeout(battleLoop, 1000);
         }
 
         async function battleLoop() {
             if (!b.active) return;
 
-            // Ataca Jugador
+            // Turno Jugador
             await animate('spr-p', 'anim-atk-r');
             b.e_hp -= pData.totalAtk;
             hitEffect('spr-e');
-            log(`Golpeas al enemigo: -${pData.totalAtk} HP`);
+            log(`Golpeas al rival: -${pData.totalAtk} HP`);
             updateHP();
 
             if (b.e_hp <= 0) return endBattle(true);
 
-            // Ataca Enemigo
+            // Turno Enemigo
             setTimeout(async () => {
                 await animate('spr-e', 'anim-atk-l');
-                let dmg = 10 + (pData.lvl * 2);
+                let dmg = 10 + (pData.lvl * 3);
                 
                 if (Math.random() < RAZAS[pData.race].dodge) {
-                    log("¡MOVIMIENTO RÁPIDO! Esquivaste el golpe.");
+                    log("¡Esquivaste el ataque con agilidad!");
                 } else {
                     b.p_hp -= dmg;
                     hitEffect('spr-p');
@@ -285,7 +282,7 @@
                 b.p_hp = Math.min(b.p_max, b.p_hp + 50);
                 updateHP();
                 updateHUD();
-                log("🧪 ¡Usaste poción! +50 Salud recuperada.");
+                log("🧪 Recuperas 50 puntos de salud.");
                 saveDB();
             }
         }
@@ -296,9 +293,9 @@
                 let reward = Math.floor(50 * RAZAS[pData.race].gold);
                 pData.gold += reward;
                 pData.lvl++;
-                log(`<span style="color:var(--gold)">¡GANASTE! +${reward} Oro</span>`);
+                log(`<span style="color:var(--gold)">¡VICTORIA! Has ganado ${reward} monedas.</span>`);
             } else {
-                log("<span style='color:var(--red)'>HAS CAÍDO EN COMBATE...</span>");
+                log("<span style='color:var(--red)'>HAS SIDO DERROTADO.</span>");
             }
             await saveDB();
             setTimeout(initLobby, 2500);
